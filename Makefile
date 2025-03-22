@@ -22,3 +22,7 @@ unit-test-coverage:
 
 db:
 	duckdb data/db/stockgame.duckdb
+
+release:
+	go build -o bin/api-server cmd/api-server/main.go
+	go build -o bin/data-loader cmd/data-loader/main.go

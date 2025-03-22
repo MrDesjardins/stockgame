@@ -41,3 +41,18 @@ select count(*) from stocks;
 │ (24.19 million) │
 └─────────────────┘
 ```
+
+# Todo
+
+## Backlog
+
+- [ ] Load the stock information into the database
+- [ ] Create an api that take the user inputs and resutn a score
+- [ ] Create user tables (user, user scores)
+
+## Done
+
+- [x] Create a database
+- [x] Read CSV and load prices into the database
+- [x] Create a simple API that returns the stock price for a given date
+- [x] Create a Makefile
