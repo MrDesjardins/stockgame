@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"stockgame/internal/database"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -45,8 +46,16 @@ func insertStocks(db *sql.DB) {
 	totalFiles := len(files)
 	fmt.Printf("Total files: %d\n", totalFiles)
 
+	startTime := time.Now()
+
 	// Start a transaction
 	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Delete all stocks from the table
+	_, err = tx.Exec("DELETE FROM stocks;")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,6 +111,9 @@ func insertStocks(db *sql.DB) {
 	if err := tx.Commit(); err != nil {
 		log.Fatal(err)
 	}
+
+	endTime := time.Now()
+	fmt.Printf("Time taken: %v\n", endTime.Sub(startTime))
 
 	fmt.Println("Data insertion completed successfully.")
 }
