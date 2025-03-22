@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 
+	_ "github.com/marcboeker/go-duckdb" // DuckDB driver
 	_ "modernc.org/sqlite"
 )
 
@@ -12,11 +13,12 @@ var db *sql.DB
 func ConnectDB() {
 	var err error
 
-	db, err = sql.Open("sqlite", "./data/db/stockgame.db")
+	db, err = sql.Open("duckdb", "./data/db/stockgame.duckdb")
 	if err != nil {
 		println("Error connecting to the database")
 		panic(err)
 	}
+
 	println("Connected to the database")
 }
 

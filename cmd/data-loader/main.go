@@ -2,10 +2,11 @@ package main
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"stockgame/internal/database"
 	"strings"
 	"time"
@@ -17,16 +18,15 @@ func createTables(db *sql.DB) {
 
 	// Create the stocks table
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS stocks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		symbol TEXT NOT NULL,
-		date TEXT NOT NULL,
-		open REAL NOT NULL,
-		high REAL NOT NULL,
-		low REAL NOT NULL,
-		close REAL NOT NULL,
-		adj_close REAL NOT NULL,
-		volume INTEGER NOT NULL
-	);`)
+    symbol VARCHAR NULL,
+    date VARCHAR NOT NULL,
+    open FLOAT NOT NULL,
+    high FLOAT NOT NULL,
+    low FLOAT NOT NULL,
+    "close" FLOAT NOT NULL,
+    adj_close FLOAT NOT NULL,
+    volume INTEGER NOT NULL
+);`)
 	if err != nil {
 		println("Cannot create table")
 		panic(err)
@@ -37,87 +37,120 @@ func createTables(db *sql.DB) {
 func insertStocks(db *sql.DB) {
 	dirPath := "./data/raw/stocks/"
 
-	files, err := os.ReadDir(dirPath)
-	if err != nil {
-		println("Error reading directory")
-		log.Fatal(err)
-	}
-
-	totalFiles := len(files)
-	fmt.Printf("Total files: %d\n", totalFiles)
-
 	startTime := time.Now()
 
-	// Start a transaction
-	tx, err := db.Begin()
+	// Delete existing records before inserting
+	_, err := db.Exec("DELETE FROM stocks;")
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println("Deleted existing records")
 
-	// Delete all stocks from the table
-	_, err = tx.Exec("DELETE FROM stocks;")
+	// Read all CSV files
+	files, err := os.ReadDir(dirPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error reading directory:", err)
 	}
 
-	// Prepare the statement once
-	stmt, err := tx.Prepare(`INSERT INTO stocks (symbol, date, open, high, low, close, adj_close, volume)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?);`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close() // Ensure statement is closed
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".csv") {
+			symbol := strings.TrimSuffix(file.Name(), ".csv")
+			filePath := fmt.Sprintf("%s/%s", dirPath, file.Name())
 
-	for i, file := range files {
-		fileName := file.Name()
-		stockName := fileName[:len(fileName)-4] // Remove the .csv extension
+			// Import with filename as symbol
+			query := fmt.Sprintf(`
+							COPY stocks (date, open, high, low, close, adj_close, volume)
+							FROM '%s'
+							WITH (HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
+					`, filePath)
 
-		fmt.Printf("%d/%d - %s\n", i+1, totalFiles, stockName)
-
-		filePath := filepath.Join(dirPath, fileName)
-
-		// Read the file
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Skip the first line (header)
-		lines := strings.Split(string(data), "\n")[1:]
-
-		// Insert each line using the prepared statement
-		for _, line := range lines {
-			// Skip empty lines
-			if strings.TrimSpace(line) == "" {
-				continue
-			}
-
-			// Split the line into columns
-			columns := strings.Split(line, ",")
-			if len(columns) < 7 {
-				log.Printf("Skipping invalid row in %s: %v\n", filePath, columns)
-				continue
-			}
-
-			_, err := stmt.Exec(stockName, columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], columns[6])
+			_, err = db.Exec(query)
 			if err != nil {
-				log.Printf("Error inserting row in %s: %v\n", filePath, err)
-				continue
+				// Preprocess the CSV file to remove rows with missing values
+				cleanedFilePath, err := preprocessCSV(filePath)
+				if err != nil {
+					fmt.Printf("Error preprocessing CSV file %s: %v\n", file.Name(), err)
+					continue
+				}
+				query := fmt.Sprintf(`
+				COPY stocks (date, open, high, low, close, adj_close, volume)
+				FROM '%s'
+				WITH (HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
+				`, cleanedFilePath)
+
+				_, err = db.Exec(query)
+				if err != nil {
+					fmt.Printf("Error copying CSV file %s: %v\n", file.Name(), err)
+					continue
+				}
+				err = os.Remove(cleanedFilePath)
+				if err != nil {
+					fmt.Printf("Error removing temp file %s: %v\n", cleanedFilePath, err)
+				}
 			}
+
+			// Update symbol column
+			_, err = db.Exec("UPDATE stocks SET symbol = ? WHERE symbol IS NULL;", symbol)
+			if err != nil {
+				fmt.Printf("Error updating symbol for %s: %v\n", file.Name(), err)
+			}
+
+			fmt.Printf("Inserted data from %s\n", file.Name())
 		}
 	}
 
-	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		log.Fatal(err)
-	}
-
-	endTime := time.Now()
-	fmt.Printf("Time taken: %v\n", endTime.Sub(startTime))
-
-	fmt.Println("Data insertion completed successfully.")
+	fmt.Println("Data insertion completed.")
+	fmt.Printf("Time taken: %v\n", time.Since(startTime))
 }
 
+// Preprocess the CSV file to remove rows with missing values
+func preprocessCSV(filePath string) (string, error) {
+	tempFilePath := fmt.Sprintf("%s_cleaned.csv", filePath)
+
+	inputFile, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer inputFile.Close()
+
+	outputFile, err := os.Create(tempFilePath)
+	if err != nil {
+		return "", err
+	}
+	defer outputFile.Close()
+
+	reader := csv.NewReader(inputFile)
+	writer := csv.NewWriter(outputFile)
+	defer writer.Flush()
+
+	// Read and process each row
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+
+		// Skip rows with missing values
+		if len(row) == 7 && allColumnsHaveValues(row) {
+			writer.Write(row)
+		}
+	}
+
+	return tempFilePath, nil
+}
+
+// Helper function to check if all columns have values
+func allColumnsHaveValues(row []string) bool {
+	for _, col := range row {
+		if strings.TrimSpace(col) == "" {
+			return false
+		}
+	}
+	return true
+}
 func main() {
 	// Create the SQL Lite database if it doesn't exist
 	// Create a connection to the SQL Lite database
