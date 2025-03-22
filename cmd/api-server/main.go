@@ -3,19 +3,21 @@ package main
 import (
 	"net/http"
 
+	"stockgame/internal/database"
 	"stockgame/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func getStock(c *gin.Context) {
-	stock := service.GetStockFromPersistence()
+func getStocks(c *gin.Context) {
+	stock := service.GetRandomStockWithRandomDayRange(10)
 	c.IndentedJSON(http.StatusOK, stock)
 }
 
 func main() {
+	database.ConnectDB()
 	router := gin.Default()
-	router.GET("/stock", getStock)
+	router.GET("/stocks", getStocks)
 
 	router.Run("localhost:8080")
 }

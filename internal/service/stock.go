@@ -1,17 +1,28 @@
 package service
 
-import "stockgame/internal/model"
+import (
+	"math/rand/v2"
+	"stockgame/internal/dataaccess"
+	"stockgame/internal/model"
+)
 
-func GetStockFromPersistence() model.Stock {
-	return model.Stock{
-		Id:       1,
-		Symbol:   "AAPL",
-		Date:     "2021-01-01",
-		Open:     100.0,
-		High:     105.0,
-		Low:      95.0,
-		Close:    102.0,
-		AdjClose: 102.0,
-		Volume:   1000000,
+func GetRandomStockWithRandomDayRange(numberOfDays int) []model.Stock {
+	stocks := GetRandomStockFromPersistence()
+	if len(stocks) < numberOfDays {
+		return stocks
 	}
+	index := rand.IntN(len(stocks) - numberOfDays)
+	return stocks[index : index+numberOfDays]
+}
+
+func GetRandomStockFromPersistence() []model.Stock {
+	syms := dataaccess.GetUniqueStockSymbols()
+	symbol := GetRandomStock(syms)
+	stocks := dataaccess.GetPricesForStock(symbol)
+	return stocks
+}
+
+func GetRandomStock(symbol []string) string {
+	index := rand.IntN(len(symbol))
+	return symbol[index]
 }
