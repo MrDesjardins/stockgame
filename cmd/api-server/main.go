@@ -1,12 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
 	"stockgame/internal/database"
 	"stockgame/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func getStocks(c *gin.Context) {
@@ -15,9 +18,14 @@ func getStocks(c *gin.Context) {
 }
 
 func main() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		panic("Error loading .env file")
+	}
+	port := os.Getenv("API_PORT")
 	database.ConnectDB()
 	router := gin.Default()
 	router.GET("/stocks", getStocks)
 
-	router.Run("localhost:8080")
+	router.Run(fmt.Sprintf("localhost:%s", port))
 }
