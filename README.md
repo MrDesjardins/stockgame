@@ -46,7 +46,8 @@ select count(*) from stocks;
 
 ## Backlog
 
-- [ ] Clarify each day for the user area (vertical lines)
+
+- [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
 - [ ] Create an api that take the user inputs and result a score
 - [ ] Show the solution that diff the user input and the stock price
 - [ ] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
@@ -70,3 +71,4 @@ select count(*) from stocks;
 - [x] Create a Makefile
 - [x] Draw on a Canvas the price of a stock
 - [x] Allow the user to draw on the canvas (only after the stock price)
+- [x] Clarify each day for the user area (vertical lines)

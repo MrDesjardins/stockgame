@@ -18,7 +18,7 @@ export interface StockCanvasProps {
   addUserDrawnPrice: (x: number, y: number) => void;
   clearUserDrawnPrices: () => void;
 }
-
+const NUMBER_PRICE_SHOW = 10;
 export function StockCanvas(props: StockCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -38,8 +38,8 @@ export function StockCanvas(props: StockCanvasProps) {
     (ctx: CanvasRenderingContext2D, width: number, height: number) => {
       ctx.strokeStyle = "#DDD";
       ctx.lineWidth = 1;
-      for (let i = 1; i <= 10; i++) {
-        const y = (i / 10) * height;
+      for (let i = 1; i <= NUMBER_PRICE_SHOW; i++) {
+        const y = (i / NUMBER_PRICE_SHOW) * height;
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
@@ -49,10 +49,28 @@ export function StockCanvas(props: StockCanvasProps) {
         ctx.fillStyle = "black";
         const yText = y - 4;
         ctx.fillText(`$${price.toFixed(2)}`, 2, yText);
-        ctx.fillText(`$${price.toFixed(2)}`, props.width - 30, yText);
+        if (i < NUMBER_PRICE_SHOW) {
+          ctx.fillText(`$${price.toFixed(2)}`, props.width - 30, yText);
+        }
+      }
+
+      for (let i = 0; i < props.futureDays; i++) {
+        const x = props.data.length * candleWidth + i * candleWidth;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+        ctx.fillText(`+${i + 1}`, x + 2, height - 2);
       }
     },
-    [props.maxPrice, props.minPrice, props.width]
+    [
+      candleWidth,
+      props.data.length,
+      props.futureDays,
+      props.maxPrice,
+      props.minPrice,
+      props.width,
+    ]
   );
 
   useEffect(() => {
