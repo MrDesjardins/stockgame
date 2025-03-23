@@ -13,7 +13,7 @@ import (
 )
 
 func getStocks(c *gin.Context) {
-	stock := service.GetRandomStockWithRandomDayRange(1)
+	stock := service.GetRandomStockWithRandomDayRange(20)
 	c.IndentedJSON(http.StatusOK, stock)
 }
 

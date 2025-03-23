@@ -1,17 +1,8 @@
 import "./App.css";
 import { useQuery } from "@tanstack/react-query";
+import { StockCanvas } from "./StockCanvas";
+import { Stock } from "./model/stock";
 
-interface Stock {
-  id: number;
-  symbol: string;
-  date: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  adj_close: number;
-  volume: number;
-}
 async function getStocks(): Promise<Stock[]> {
   const data = await fetch("http://localhost:8080/stocks");
   return data.json();
@@ -30,7 +21,9 @@ function App() {
   return (
     <>
       <div>
-        <div id="data">{isPending ? "Loading" : JSON.stringify(data)}</div>
+        <div id="data">
+          {isPending ? "Loading" : <StockCanvas data={data} />}
+        </div>
         <div id="controls">
           <button onClick={() => refetch()}>Fetch</button>
         </div>
