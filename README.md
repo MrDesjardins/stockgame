@@ -1,5 +1,5 @@
-# stockgame
-
+# StockgGame
+The Stock Game is a simple game where the user has to guess the price of a stock for a given date. The user will see the stock price for a given date and will have to draw the price on a canvas. The user will get points based on how close the user's guess is to the actual price.
 
 ## Dev Installation
 
@@ -46,9 +46,21 @@ select count(*) from stocks;
 
 ## Backlog
 
-- [ ] Load the stock information into the database
-- [ ] Create an api that take the user inputs and resutn a score
+- [ ] Clarify each day for the user area (vertical lines)
+- [ ] Create an api that take the user inputs and result a score
+- [ ] Show the solution that diff the user input and the stock price
+- [ ] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
+- [ ] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
 - [ ] Create user tables (user, user scores)
+- [ ] Remove hardcodeing URL from StockCanvas.tsx to use a environment variable
+- [ ] Obfuscate the Stock to avoid people cheating
+- [ ] Add a delay between submission to avoid people cheating
+- [ ] Add a leaderboard
+- [ ] Add a user registration
+- [ ] Add a user login
+- [ ] Add a user logout
+- [ ] Make the canvas more responsive (mobile friendly?)
+- [ ] Make the canvas draw with touch (mobile support?)
 
 ## Done
 
@@ -56,3 +68,5 @@ select count(*) from stocks;
 - [x] Read CSV and load prices into the database
 - [x] Create a simple API that returns the stock price for a given date
 - [x] Create a Makefile
+- [x] Draw on a Canvas the price of a stock
+- [x] Allow the user to draw on the canvas (only after the stock price)
