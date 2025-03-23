@@ -1,7 +1,14 @@
 # PHONY does not check if the file exists or not, it will always run the command
+.PHONY: watch 
 .PHONY: api 
 .PHONY: init 
 .PHONY: unit-test 
+.PHONY: unit-test-coverage
+.PHONY: db
+.PHONY: release
+
+watch:
+	air -c .air.toml
 
 api:
 	go run cmd/api-server/main.go
