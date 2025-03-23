@@ -15,6 +15,11 @@ func GetRandomStockWithRandomDayRange(numberOfDays int) []model.Stock {
 	return stocks[index : index+numberOfDays]
 }
 
+func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
+	stocks := dataaccess.GetPricesForStockInTimeRange(symbol, startDate, endDate)
+	return stocks
+}
+
 func GetRandomStockFromPersistence() []model.Stock {
 	syms := dataaccess.GetUniqueStockSymbols()
 	symbol := GetRandomStock(syms)

@@ -58,3 +58,34 @@ func GetUniqueStockSymbols() []string {
 	}
 	return symbols
 }
+
+func GetPricesForStockInTimeRange(symbol string, startDate string, endDate string) []model.Stock {
+	db := database.GetDB()
+	query := `
+		SELECT rowid, symbol, date, open, high, low, close, adj_close, volume
+		FROM stocks
+		WHERE symbol = ?
+		AND date >= ?
+		AND date <= ?
+		ORDER BY date ASC
+	`
+	rows, err := db.Query(query, symbol, startDate, endDate)
+	if err != nil {
+		fmt.Println("Error querying stock: ", err)
+		return []model.Stock{}
+	}
+	defer rows.Close()
+	var stocks = []model.Stock{}
+	for rows.Next() {
+		var stock model.Stock
+		err := rows.Scan(&stock.Id, &stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
+		if err != nil {
+			fmt.Println("Error scanning row: ", err)
+			continue
+		}
+		stocks = append(stocks, stock)
+		continue
+
+	}
+	return stocks
+}

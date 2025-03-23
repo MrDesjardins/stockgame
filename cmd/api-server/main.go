@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"stockgame/internal/database"
 	"stockgame/internal/service"
@@ -17,6 +18,33 @@ func getStocks(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, stock)
 }
 
+func getStockInTimeRange(c *gin.Context) {
+
+	stockSymbol := c.Query("symbol")
+	startDate := c.Query("startDate")
+	endDate := c.Query("endDate")
+	if stockSymbol == "" || startDate == "" || endDate == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "symbol, startDate, and endDate are required query parameters"})
+		return
+	}
+	// Make sure we are not querying for more than 30 days
+	startDateGo, err := time.Parse("2006-01-20", startDate)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "startDate is not in the correct format"})
+		return
+	}
+	endDateGo, err := time.Parse("2006-01-20", endDate)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "endDate is not in the correct format"})
+		return
+	}
+	if endDateGo.Sub(startDateGo).Hours()/24 > 30 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Cannot query for more than 30 days"})
+		return
+	}
+	stock := service.GetStockPriceForTimeRange(stockSymbol, startDate, endDate)
+	c.IndentedJSON(http.StatusOK, stock)
+}
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -33,6 +61,7 @@ func main() {
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 	})
 	router.GET("/stocks", getStocks)
+	router.GET("/stocksInTime", getStockInTimeRange)
 
 	router.Run(fmt.Sprintf("localhost:%s", port))
 }
