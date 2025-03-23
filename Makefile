@@ -7,7 +7,12 @@
 .PHONY: db
 .PHONY: release
 
-watch:
+dev:
+	air -c .air.toml & \
+	(cd cmd/frontend-server && . ~/.nvm/nvm.sh && nvm use && npm run dev) & \
+	wait
+
+api-watch:
 	air -c .air.toml
 
 api:
