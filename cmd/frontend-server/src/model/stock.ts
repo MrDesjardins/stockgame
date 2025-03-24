@@ -20,8 +20,14 @@ export interface SolutionRequest {
   estimatedDayPrices: SolutionDayPrice[];
 }
 
+export interface BB20Payload{
+  date: string;
+  upperBand: number;
+  lowerBand: number;
+}
 export interface SolutionResponse {
   symbol: string;
   stocks: Stock[];
   score: number;
+  bb20: Record<string, BB20Payload>
 }

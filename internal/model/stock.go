@@ -23,7 +23,14 @@ type UserSolutionRequest struct {
 }
 
 type UserSolutionResponse struct {
-	Symbol string  `json:"symbol"`
-	Score  int     `json:"score"`
-	Stocks []Stock `json:"stocks"`
+	Symbol string                   `json:"symbol"`
+	Score  int                      `json:"score"`
+	Stocks []Stock                  `json:"stocks"`
+	BB20   map[string]BollingerBand `json:"bb20"`
+}
+
+type BollingerBand struct {
+	Date      string  `json:"date"`
+	UpperBand float64 `json:"upperBand"`
+	LowerBand float64 `json:"lowerBand"`
 }

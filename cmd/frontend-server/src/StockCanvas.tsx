@@ -150,6 +150,67 @@ export function StockCanvas(props: StockCanvasProps) {
       );
     };
 
+    const drawBB20 = (
+      ctx: CanvasRenderingContext2D,
+      stocks: Stock[],
+      bb20: Record<string, { upperBand: number; lowerBand: number }>
+    ) => {
+      ctx.strokeStyle = "blue";
+      ctx.lineWidth = 1;
+      const firstStock = stocks[0];
+      let x = stockIndexToX(props.data.length - 1);
+      let y = priceToYPixel(
+        bb20[firstStock.date].upperBand,
+        canvas.height,
+        props.minPrice,
+        props.maxPrice
+      );
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let i = 1; i < stocks.length; i++) {
+        const stock = stocks[i];
+        const band = bb20[stock.date];
+        if (band === undefined) {
+          continue;
+        }
+        y = priceToYPixel(
+          band.upperBand,
+          canvas.height,
+          props.minPrice,
+          props.maxPrice
+        );
+        x = stockIndexToX(props.data.length - 1 + i);
+        ctx.lineTo(x + candleWidth / 2, y);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      x = stockIndexToX(props.data.length - 1);
+      y = priceToYPixel(
+        bb20[firstStock.date].lowerBand,
+        canvas.height,
+        props.minPrice,
+        props.maxPrice
+      );
+      ctx.moveTo(x, y);
+      for (let i = 1; i < stocks.length; i++) {
+        const stock = stocks[i];
+        const band = bb20[stock.date];
+        if (band === undefined) {
+          continue;
+        }
+        y = priceToYPixel(
+          band.lowerBand,
+          canvas.height,
+          props.minPrice,
+          props.maxPrice
+        );
+        x = stockIndexToX(props.data.length - 1 + i);
+        ctx.lineTo(x + candleWidth / 2, y);
+      }
+      ctx.stroke();
+    };
     const drawChart = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -170,6 +231,7 @@ export function StockCanvas(props: StockCanvasProps) {
         for (let i = 0; i < props.response.stocks.length; i++) {
           drawSingleStock(ctx, props.response.stocks[i], props.data.length + i);
         }
+        drawBB20(ctx, props.response.stocks, props.response.bb20);
       }
 
       drawGrid(ctx, canvas.width, canvas.height);

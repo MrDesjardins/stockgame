@@ -12,4 +12,4 @@ export function priceToYPixel(price: number, height: number, minPrice: number, m
 
 export function candelPixelWidth(width: number, totalDays: number): number {
   return width / totalDays;
-}
+} 

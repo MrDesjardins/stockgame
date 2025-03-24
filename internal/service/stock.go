@@ -20,6 +20,11 @@ func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) 
 	return stocks
 }
 
+func GetStockBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
+	stocks := dataaccess.GetStocksBeforeEqualDate(symbol, beforeDate)
+	return stocks
+}
+
 func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
 	stocks := dataaccess.GetStocksAfterDate(symbol, afterDate)
 	return stocks

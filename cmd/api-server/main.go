@@ -15,10 +15,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const number_initial_stock_shown = 40
-
 func getStocks(c *gin.Context) {
-	stock := service.GetRandomStockWithRandomDayRange(number_initial_stock_shown)
+
+	stock := service.GetRandomStockWithRandomDayRange(model.Number_initial_stock_shown)
 	c.IndentedJSON(http.StatusOK, stock)
 }
 
@@ -68,14 +67,17 @@ func solution(c *gin.Context) {
 	}
 
 	// Get stock data (Assuming this function exists)
-	realStocks := service.GetStocksAfterDate(stockSymbol, afterDate)
-
+	realStocksBeforeDate := service.GetStockBeforeEqualDate(stockSymbol, afterDate)
+	realStocksAfterDate := service.GetStocksAfterDate(stockSymbol, afterDate)
+	fullList := append(realStocksBeforeDate, realStocksAfterDate...) // To calculuate Bollinger Bands we need the price before and after the date
 	// Score
-	score := logic.GetScore(dayPrice, realStocks)
+	bollinger20Days := logic.CalculateBollingerBands(fullList, 20)
+	score := logic.GetScore(dayPrice, realStocksAfterDate, bollinger20Days)
 	solutionResponse := model.UserSolutionResponse{
 		Symbol: stockSymbol,
 		Score:  score,
-		Stocks: realStocks,
+		Stocks: realStocksAfterDate,
+		BB20:   bollinger20Days,
 	}
 	c.IndentedJSON(http.StatusOK, solutionResponse)
 }
