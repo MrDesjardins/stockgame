@@ -47,9 +47,9 @@ select count(*) from stocks;
 ## Backlog
 
 
-- [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
-- [ ] Create an api that take the user inputs and result a score
 - [ ] Show the solution that diff the user input and the stock price
+- [ ] Create an API endoint that take the user inputs and result a score
+- [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
 - [ ] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
 - [ ] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
 - [ ] Create user tables (user, user scores)

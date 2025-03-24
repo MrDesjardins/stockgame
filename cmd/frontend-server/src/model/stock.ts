@@ -9,3 +9,13 @@ export interface Stock {
   adj_close: number;
   volume: number;
 }
+
+export interface SolutionDayPrice {
+  day: number;
+  price: number;
+}
+export interface Solution {
+  afterDate: string;
+  symbol: string;
+  dayPrice: SolutionDayPrice[];
+}

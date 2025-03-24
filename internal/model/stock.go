@@ -11,3 +11,13 @@ type Stock struct {
 	AdjClose float64 `json:"adj_close"`
 	Volume   int     `json:"volume"`
 }
+
+type DayPrice struct {
+	Day   int     `json:"day"`
+	Price float64 `json:"price"`
+}
+type UserSolution struct {
+	Symbol    string     `json:"symbol"`
+	AfterDate string     `json:"afterDate"`
+	DayPrice  []DayPrice `json:"dayPrice"`
+}

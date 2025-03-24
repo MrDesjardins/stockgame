@@ -20,6 +20,11 @@ func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) 
 	return stocks
 }
 
+func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
+	stocks := dataaccess.GetStocksAfterDate(symbol, afterDate)
+	return stocks
+}
+
 func GetRandomStockFromPersistence() []model.Stock {
 	syms := dataaccess.GetUniqueStockSymbols()
 	symbol := GetRandomStock(syms)

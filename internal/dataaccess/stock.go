@@ -89,3 +89,34 @@ func GetPricesForStockInTimeRange(symbol string, startDate string, endDate strin
 	}
 	return stocks
 }
+
+func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
+	db := database.GetDB()
+	query := `
+		SELECT rowid, symbol, date, open, high, low, close, adj_close, volume
+		FROM stocks
+		WHERE symbol = ?
+		AND date > ?
+		ORDER BY date ASC
+		LIMIT 10
+	`
+	rows, err := db.Query(query, symbol, afterDate)
+	if err != nil {
+		fmt.Println("Error querying stock: ", err)
+		return []model.Stock{}
+	}
+	defer rows.Close()
+	var stocks = []model.Stock{}
+	for rows.Next() {
+		var stock model.Stock
+		err := rows.Scan(&stock.Id, &stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
+		if err != nil {
+			fmt.Println("Error scanning row: ", err)
+			continue
+		}
+		stocks = append(stocks, stock)
+		continue
+
+	}
+	return stocks
+}

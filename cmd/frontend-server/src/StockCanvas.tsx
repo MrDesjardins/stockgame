@@ -8,6 +8,7 @@ import {
 
 export interface StockCanvasProps {
   data: Stock[];
+  response: Stock[];
   minPrice: number;
   maxPrice: number;
   totalDays: number;
@@ -85,9 +86,66 @@ export function StockCanvas(props: StockCanvasProps) {
       for (const point of props.userDrawnPrices) {
         ctx.beginPath();
         ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = "#C0C0C0";
+        ctx.fillStyle = `rgba(192, 192, 192, ${props.response.length > 0 ? 0.3 : 1})`;
         ctx.fill();
       }
+    };
+
+    const drawSingleStock = (
+      ctx: CanvasRenderingContext2D,
+      stock: Stock,
+      index: number
+    ) => {
+      const x = stockIndexToX(index);
+      const openY = priceToYPixel(
+        stock.open,
+        canvas.height,
+        props.minPrice,
+        props.maxPrice
+      );
+      const closeY = priceToYPixel(
+        stock.close,
+        canvas.height,
+        props.minPrice,
+        props.maxPrice
+      );
+      const highY = priceToYPixel(
+        stock.high,
+        canvas.height,
+        props.minPrice,
+        props.maxPrice
+      );
+      const lowY = priceToYPixel(
+        stock.low,
+        canvas.height,
+        props.minPrice,
+        props.maxPrice
+      );
+      const isBullish = stock.close > stock.open;
+
+      ctx.strokeStyle = "black";
+      ctx.fillStyle = isBullish ? "green" : "red";
+
+      // Draw the candle high and low
+      ctx.beginPath();
+      ctx.moveTo(x + candleWidth / 2, highY);
+      ctx.lineTo(x + candleWidth / 2, lowY);
+      ctx.stroke();
+
+      // Draw the candle body
+      ctx.fillRect(
+        x,
+        Math.min(openY, closeY),
+        candleWidth * 0.8,
+        Math.abs(closeY - openY)
+      );
+      // Draw the candle border
+      ctx.strokeRect(
+        x,
+        Math.min(openY, closeY),
+        candleWidth * 0.8,
+        Math.abs(closeY - openY)
+      );
     };
 
     const drawChart = () => {
@@ -104,57 +162,12 @@ export function StockCanvas(props: StockCanvasProps) {
 
       // Draw each day's candle
       props.data.forEach((stock, index) => {
-        const x = stockIndexToX(index);
-        const openY = priceToYPixel(
-          stock.open,
-          canvas.height,
-          props.minPrice,
-          props.maxPrice
-        );
-        const closeY = priceToYPixel(
-          stock.close,
-          canvas.height,
-          props.minPrice,
-          props.maxPrice
-        );
-        const highY = priceToYPixel(
-          stock.high,
-          canvas.height,
-          props.minPrice,
-          props.maxPrice
-        );
-        const lowY = priceToYPixel(
-          stock.low,
-          canvas.height,
-          props.minPrice,
-          props.maxPrice
-        );
-        const isBullish = stock.close > stock.open;
-
-        ctx.strokeStyle = "black";
-        ctx.fillStyle = isBullish ? "green" : "red";
-
-        // Draw the candle high and low
-        ctx.beginPath();
-        ctx.moveTo(x + candleWidth / 2, highY);
-        ctx.lineTo(x + candleWidth / 2, lowY);
-        ctx.stroke();
-
-        // Draw the candle body
-        ctx.fillRect(
-          x,
-          Math.min(openY, closeY),
-          candleWidth * 0.8,
-          Math.abs(closeY - openY)
-        );
-        // Draw the candle border
-        ctx.strokeRect(
-          x,
-          Math.min(openY, closeY),
-          candleWidth * 0.8,
-          Math.abs(closeY - openY)
-        );
+        drawSingleStock(ctx, stock, index);
       });
+
+      for (let i = 0; i < props.response.length; i++) {
+        drawSingleStock(ctx, props.response[i], props.data.length + i);
+      }
 
       drawGrid(ctx, canvas.width, canvas.height);
       drawUserPoints(ctx);
@@ -168,12 +181,15 @@ export function StockCanvas(props: StockCanvasProps) {
     props.futureDays,
     props.maxPrice,
     props.minPrice,
+    props.response,
     props.userDrawnPrices,
     stockIndexToX,
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    props.clearUserDrawnPrices();
+    if (props.response.length === 0) {
+      props.clearUserDrawnPrices();
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -183,6 +199,10 @@ export function StockCanvas(props: StockCanvasProps) {
     }
     // Must have the canvas ready
     if (!canvasRef.current) {
+      return;
+    }
+
+    if (props.response.length > 0) {
       return;
     }
     const canvas = canvasRef.current;

@@ -1,7 +1,7 @@
 import "./App.css";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { StockCanvas } from "./StockCanvas";
-import { Stock } from "./model/stock";
+import { SolutionDayPrice, Stock } from "./model/stock";
 import { useCallback, useMemo, useState } from "react";
 import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
 
@@ -10,22 +10,49 @@ async function getStocks(): Promise<Stock[]> {
   return data.json();
 }
 
+async function postUserDayPrice(
+  symbol: string,
+  afterDate: string,
+  dayPrice: SolutionDayPrice[]
+): Promise<Stock[]> {
+  const data = await fetch(`http://localhost:8080/solution`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ symbol, afterDate, dayPrice }),
+  });
+
+  return data.json();
+}
+
 function App() {
   const futureDays = 10;
   const width = 800;
-  const height = 400;
+  const height = 600;
+  const [response, setResponse] = useState<Stock[]>([]);
   const { isPending, isError, data, error, refetch } = useQuery({
     queryKey: ["stocks"],
     queryFn: getStocks,
   });
 
+  const postSolution = useMutation({
+    mutationFn: (dayPrice: SolutionDayPrice[]) => {
+      const lastEntry = data![data!.length - 1];
+      if (lastEntry == undefined) {
+        throw new Error("No data");
+      }
+      return postUserDayPrice(lastEntry.symbol, lastEntry.date, dayPrice);
+    },
+  });
+
   // Find the min and max to determine the vertical space needed
   const minPrice = useMemo(
-    () => (data == undefined ? 0 : Math.min(...data.map((s) => s.low)) * 0.95),
+    () => (data == undefined ? 0 : Math.min(...data.map((s) => s.low)) * 0.85),
     [data]
   );
   const maxPrice = useMemo(
-    () => (data == undefined ? 0 : Math.max(...data.map((s) => s.high)) * 1.05),
+    () => (data == undefined ? 0 : Math.max(...data.map((s) => s.high)) * 1.15),
     [data]
   );
   const totalDays = useMemo(() => (data?.length ?? 0) + futureDays, [data]);
@@ -34,24 +61,12 @@ function App() {
     { x: number; y: number }[]
   >([]);
 
-  const showSolution = useCallback(() => {
-    console.log("Solution");
-  }, []);
-
-  const clear = () => {
-    setUserDrawnPoints([]);
-  };
-
-  if (isError) {
-    return <div>Error: {error.message}</div>;
-  }
-
-  const getUserDrawnPrices = () => {
+  const getUserDrawnPrices = useCallback(() => {
     if (data == undefined) {
       return [];
     }
     let lastDay = -1;
-    const onPricePerDay: { day: number; price: number }[] = [];
+    const onPricePerDay: SolutionDayPrice[] = [];
     let sumDay = 0;
     let countDay = 0;
     for (const dayPrice of userDrawnPoints) {
@@ -70,7 +85,23 @@ function App() {
     }
     onPricePerDay.push({ day: lastDay, price: sumDay / countDay });
     return onPricePerDay;
+  }, [data, maxPrice, minPrice, userDrawnPoints]);
+
+  const submitSolution = useCallback(async () => {
+    const userDayPrices = getUserDrawnPrices();
+    console.log(userDayPrices);
+    const response = await postSolution.mutateAsync(userDayPrices);
+    setResponse(response);
+  }, [getUserDrawnPrices, postSolution]);
+
+  const clear = () => {
+    setUserDrawnPoints([]);
+    setResponse([]);
   };
+
+  if (isError) {
+    return <div>Error: {error.message}</div>;
+  }
 
   return (
     <>
@@ -83,6 +114,7 @@ function App() {
               width={width}
               height={height}
               data={data}
+              response={response}
               minPrice={minPrice}
               maxPrice={maxPrice}
               totalDays={totalDays}
@@ -109,10 +141,7 @@ function App() {
           >
             New
           </button>
-          <button onClick={() => console.log(getUserDrawnPrices())}>
-            Get Drawn Prices
-          </button>
-          <button onClick={() => showSolution()}>Solution</button>
+          <button onClick={() => submitSolution()}>Solution</button>
         </div>
       </div>
     </>

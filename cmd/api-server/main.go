@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"stockgame/internal/database"
+	"stockgame/internal/model"
 	"stockgame/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,7 @@ import (
 )
 
 func getStocks(c *gin.Context) {
-	stock := service.GetRandomStockWithRandomDayRange(20)
+	stock := service.GetRandomStockWithRandomDayRange(40)
 	c.IndentedJSON(http.StatusOK, stock)
 }
 
@@ -45,6 +46,33 @@ func getStockInTimeRange(c *gin.Context) {
 	stock := service.GetStockPriceForTimeRange(stockSymbol, startDate, endDate)
 	c.IndentedJSON(http.StatusOK, stock)
 }
+
+func solution(c *gin.Context) {
+	// Read the body of the request
+	// Bind JSON directly to a struct
+	userSolution := model.UserSolution{}
+	if err := c.BindJSON(&userSolution); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+		return
+	}
+	// Extract values from the struct
+	stockSymbol := userSolution.Symbol
+	afterDate := userSolution.AfterDate
+	dayPrice := userSolution.DayPrice
+	if stockSymbol == "" || afterDate == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "symbol and afterDate are required query parameters"})
+		return
+	}
+
+	// Process dayPrice
+	for _, dp := range dayPrice {
+		println(dp.Day, dp.Price) // Validation and processing logic
+	}
+
+	// Get stock data (Assuming this function exists)
+	stock := service.GetStocksAfterDate(stockSymbol, afterDate)
+	c.IndentedJSON(http.StatusOK, stock)
+}
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -59,9 +87,16 @@ func main() {
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
 	})
 	router.GET("/stocks", getStocks)
-	router.GET("/stocksInTime", getStockInTimeRange)
+	router.GET("/stocksInTime", getStockInTimeRange) // Not used for now
+	router.POST("/solution", solution)
 
 	router.Run(fmt.Sprintf("localhost:%s", port))
 }
