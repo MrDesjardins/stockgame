@@ -154,7 +154,7 @@ function App() {
             disabled={response !== undefined}
             onClick={() => submitSolution()}
           >
-            Solution
+            Submit
           </button>
         </div>
         <div id="solution">

@@ -47,8 +47,8 @@ select count(*) from stocks;
 ## Backlog
 
 
+- [ ] Make sure the user sent 10 days of prices on the submission
 - [ ] Show the solution that diff the user input and the stock price
-- [ ] Create an API endoint that take the user inputs and result a score
 - [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
 - [ ] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
 - [ ] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
@@ -72,3 +72,4 @@ select count(*) from stocks;
 - [x] Draw on a Canvas the price of a stock
 - [x] Allow the user to draw on the canvas (only after the stock price)
 - [x] Clarify each day for the user area (vertical lines)
+- [x] Create an API endoint that take the user inputs and result a score

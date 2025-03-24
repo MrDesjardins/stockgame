@@ -76,3 +76,6 @@ button:focus-visible {
   font-size: 12px;
   margin-left:10px;
 }
+#controls > button {
+  margin-right: 10px;
+}
