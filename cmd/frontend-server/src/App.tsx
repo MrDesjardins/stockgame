@@ -50,7 +50,7 @@ function App() {
       return postUserDayPrice({
         symbol: lastEntry.symbol,
         afterDate: lastEntry.date,
-        estimatedDayPrices: dayPrice,
+        estimatedDayPrices: dayPrice.slice(0, futureDays),
       });
     },
   });

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"stockgame/internal/database"
+	"stockgame/internal/logic"
 	"stockgame/internal/model"
 	"stockgame/internal/service"
 
@@ -14,8 +15,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const number_initial_stock_shown = 40
+
 func getStocks(c *gin.Context) {
-	stock := service.GetRandomStockWithRandomDayRange(40)
+	stock := service.GetRandomStockWithRandomDayRange(number_initial_stock_shown)
 	c.IndentedJSON(http.StatusOK, stock)
 }
 
@@ -64,16 +67,11 @@ func solution(c *gin.Context) {
 		return
 	}
 
-	// Process dayPrice
-	for _, dp := range dayPrice {
-		println(dp.Day, dp.Price) // Validation and processing logic
-	}
-
-	// Score
-	score := 0
-
 	// Get stock data (Assuming this function exists)
 	realStocks := service.GetStocksAfterDate(stockSymbol, afterDate)
+
+	// Score
+	score := logic.GetScore(dayPrice, realStocks)
 	solutionResponse := model.UserSolutionResponse{
 		Symbol: stockSymbol,
 		Score:  score,

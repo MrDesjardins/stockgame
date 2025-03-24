@@ -190,7 +190,7 @@ export function StockCanvas(props: StockCanvasProps) {
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (props.response !== undefined) {
+    if (props.response === undefined) {
       props.clearUserDrawnPrices();
     }
   };

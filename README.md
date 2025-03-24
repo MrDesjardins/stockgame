@@ -46,11 +46,11 @@ select count(*) from stocks;
 
 ## Backlog
 
-
+- [ ] Send a score that is not a single number but the details of the score
+- [ ] Animate the score into the canvas making it more "game" like
 - [ ] Make sure the user sent 10 days of prices on the submission
-- [ ] Show the solution that diff the user input and the stock price
+- [ ] Display the volume on the canvas
 - [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
-- [ ] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
 - [ ] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
 - [ ] Create user tables (user, user scores)
 - [ ] Remove hardcodeing URL from StockCanvas.tsx to use a environment variable
@@ -73,3 +73,5 @@ select count(*) from stocks;
 - [x] Allow the user to draw on the canvas (only after the stock price)
 - [x] Clarify each day for the user area (vertical lines)
 - [x] Create an API endoint that take the user inputs and result a score
+- [x] Show the solution that diff the user input and the stock price
+- [x] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)

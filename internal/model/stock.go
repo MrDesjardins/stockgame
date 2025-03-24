@@ -19,7 +19,7 @@ type DayPrice struct {
 type UserSolutionRequest struct {
 	Symbol    string     `json:"symbol"`
 	AfterDate string     `json:"afterDate"`
-	DayPrice  []DayPrice `json:"dayPrice"`
+	DayPrice  []DayPrice `json:"estimatedDayPrices"`
 }
 
 type UserSolutionResponse struct {
