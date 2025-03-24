@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useCallback, useMemo } from "react";
-import { Stock } from "./model/stock";
+import { SolutionResponse, Stock } from "./model/stock";
 import {
   candelPixelWidth,
   priceToYPixel,
@@ -8,7 +8,7 @@ import {
 
 export interface StockCanvasProps {
   data: Stock[];
-  response: Stock[];
+  response: SolutionResponse | undefined;
   minPrice: number;
   maxPrice: number;
   totalDays: number;
@@ -86,7 +86,9 @@ export function StockCanvas(props: StockCanvasProps) {
       for (const point of props.userDrawnPrices) {
         ctx.beginPath();
         ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = `rgba(192, 192, 192, ${props.response.length > 0 ? 0.3 : 1})`;
+        ctx.fillStyle = `rgba(192, 192, 192, ${
+          props.response === undefined ? 1 : 0.3
+        })`;
         ctx.fill();
       }
     };
@@ -164,9 +166,10 @@ export function StockCanvas(props: StockCanvasProps) {
       props.data.forEach((stock, index) => {
         drawSingleStock(ctx, stock, index);
       });
-
-      for (let i = 0; i < props.response.length; i++) {
-        drawSingleStock(ctx, props.response[i], props.data.length + i);
+      if (props.response !== undefined) {
+        for (let i = 0; i < props.response.stocks.length; i++) {
+          drawSingleStock(ctx, props.response.stocks[i], props.data.length + i);
+        }
       }
 
       drawGrid(ctx, canvas.width, canvas.height);
@@ -187,7 +190,7 @@ export function StockCanvas(props: StockCanvasProps) {
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (props.response.length === 0) {
+    if (props.response !== undefined) {
       props.clearUserDrawnPrices();
     }
   };
@@ -202,7 +205,7 @@ export function StockCanvas(props: StockCanvasProps) {
       return;
     }
 
-    if (props.response.length > 0) {
+    if (props.response !== undefined) {
       return;
     }
     const canvas = canvasRef.current;

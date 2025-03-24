@@ -16,8 +16,14 @@ type DayPrice struct {
 	Day   int     `json:"day"`
 	Price float64 `json:"price"`
 }
-type UserSolution struct {
+type UserSolutionRequest struct {
 	Symbol    string     `json:"symbol"`
 	AfterDate string     `json:"afterDate"`
 	DayPrice  []DayPrice `json:"dayPrice"`
+}
+
+type UserSolutionResponse struct {
+	Symbol string  `json:"symbol"`
+	Score  int     `json:"score"`
+	Stocks []Stock `json:"stocks"`
 }

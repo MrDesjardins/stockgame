@@ -50,7 +50,7 @@ func getStockInTimeRange(c *gin.Context) {
 func solution(c *gin.Context) {
 	// Read the body of the request
 	// Bind JSON directly to a struct
-	userSolution := model.UserSolution{}
+	userSolution := model.UserSolutionRequest{}
 	if err := c.BindJSON(&userSolution); err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return
@@ -69,9 +69,17 @@ func solution(c *gin.Context) {
 		println(dp.Day, dp.Price) // Validation and processing logic
 	}
 
+	// Score
+	score := 0
+
 	// Get stock data (Assuming this function exists)
-	stock := service.GetStocksAfterDate(stockSymbol, afterDate)
-	c.IndentedJSON(http.StatusOK, stock)
+	realStocks := service.GetStocksAfterDate(stockSymbol, afterDate)
+	solutionResponse := model.UserSolutionResponse{
+		Symbol: stockSymbol,
+		Score:  score,
+		Stocks: realStocks,
+	}
+	c.IndentedJSON(http.StatusOK, solutionResponse)
 }
 func main() {
 	err := godotenv.Load(".env")

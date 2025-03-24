@@ -14,8 +14,14 @@ export interface SolutionDayPrice {
   day: number;
   price: number;
 }
-export interface Solution {
+export interface SolutionRequest {
   afterDate: string;
   symbol: string;
-  dayPrice: SolutionDayPrice[];
+  estimatedDayPrices: SolutionDayPrice[];
+}
+
+export interface SolutionResponse {
+  symbol: string;
+  stocks: Stock[];
+  score: number;
 }

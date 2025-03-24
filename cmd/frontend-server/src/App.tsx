@@ -1,7 +1,12 @@
 import "./App.css";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { StockCanvas } from "./StockCanvas";
-import { SolutionDayPrice, Stock } from "./model/stock";
+import {
+  SolutionDayPrice,
+  SolutionRequest,
+  SolutionResponse,
+  Stock,
+} from "./model/stock";
 import { useCallback, useMemo, useState } from "react";
 import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
 
@@ -11,16 +16,14 @@ async function getStocks(): Promise<Stock[]> {
 }
 
 async function postUserDayPrice(
-  symbol: string,
-  afterDate: string,
-  dayPrice: SolutionDayPrice[]
-): Promise<Stock[]> {
+  requestData: SolutionRequest
+): Promise<SolutionResponse> {
   const data = await fetch(`http://localhost:8080/solution`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ symbol, afterDate, dayPrice }),
+    body: JSON.stringify(requestData),
   });
 
   return data.json();
@@ -30,7 +33,9 @@ function App() {
   const futureDays = 10;
   const width = 800;
   const height = 600;
-  const [response, setResponse] = useState<Stock[]>([]);
+  const [response, setResponse] = useState<SolutionResponse | undefined>(
+    undefined
+  );
   const { isPending, isError, data, error, refetch } = useQuery({
     queryKey: ["stocks"],
     queryFn: getStocks,
@@ -42,7 +47,11 @@ function App() {
       if (lastEntry == undefined) {
         throw new Error("No data");
       }
-      return postUserDayPrice(lastEntry.symbol, lastEntry.date, dayPrice);
+      return postUserDayPrice({
+        symbol: lastEntry.symbol,
+        afterDate: lastEntry.date,
+        estimatedDayPrices: dayPrice,
+      });
     },
   });
 
@@ -96,7 +105,7 @@ function App() {
 
   const clear = () => {
     setUserDrawnPoints([]);
-    setResponse([]);
+    setResponse(undefined);
   };
 
   if (isError) {
@@ -141,7 +150,25 @@ function App() {
           >
             New
           </button>
-          <button onClick={() => submitSolution()}>Solution</button>
+          <button
+            disabled={response !== undefined}
+            onClick={() => submitSolution()}
+          >
+            Solution
+          </button>
+        </div>
+        <div id="solution">
+          {response == undefined ? (
+            ""
+          ) : (
+            <div>
+              <h2>
+                {response.symbol}
+                <span id="date">{response.stocks[0].date}</span>
+              </h2>
+              <p>Score: {response.score}</p>
+            </div>
+          )}
         </div>
       </div>
     </>
