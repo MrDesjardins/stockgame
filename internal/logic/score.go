@@ -20,13 +20,14 @@ func GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollin
 			break
 		}
 		actualStock := actualStockInfo[i]
+		// Check if user price is within the actual stock low/high of the day
 		if userPrices[i].Price >= actualStock.Low && userPrices[i].Price <= actualStock.High {
-			score += 10
+			score += 10 + 2*i // Bonus if the prediction is accurate the farther in the future
 		}
 		// Additional point if between open/close (harder)
 		// First check is if open is lower than close
 		if userPrices[i].Price >= actualStock.Open && userPrices[i].Price <= actualStock.Close {
-			score += 10
+			score += 10 + 2*i // Bonus if the prediction is accurate the farther in the future
 		}
 		// Second check is if open is higher than close
 		if userPrices[i].Price >= actualStock.Close && userPrices[i].Price <= actualStock.Open {
