@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { SolutionResponse, Stock } from "./model/stock";
 import {
   candelPixelWidth,
@@ -18,11 +24,24 @@ export interface StockCanvasProps {
   userDrawnPrices: { x: number; y: number }[];
   addUserDrawnPrice: (x: number, y: number) => void;
   clearUserDrawnPrices: () => void;
+  responseCounter: number;
 }
 const NUMBER_PRICE_SHOW = 10;
+const ANIMATION_SPEED = 20; // ms per candle
 export function StockCanvas(props: StockCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
+  // Animation of the data candles
+  const [animatedDataCandleCount, setAnimatedCandleCount] = useState(0);
+  const [isAnimatingData, setIsAnimating] = useState(false);
+  const animationDataRef = useRef<number | null>(null);
+  const prevDataLengthRef = useRef<number>(0);
+  const prevDataFirstDateRef = useRef<string>("");
+  // Animation of the response candles
+  const [animatedResponseCandleCount, setAnimatedResponseCandleCount] =
+    useState(0);
+  const [isAnimatingResponse, setIsAnimatingResponse] = useState(false);
+  const animationResponseRef = useRef<number | null>(null);
+  const prevResponseCounterRef = useRef<number>(0);
   const candleWidth = useMemo(() => {
     return candelPixelWidth(props.width, props.totalDays);
   }, [props.width, props.totalDays]);
@@ -34,11 +53,116 @@ export function StockCanvas(props: StockCanvasProps) {
     },
     [candleWidth]
   );
-  // Draw horizontal grid lines
-  const drawGrid = useCallback(
+
+  // Reset and start animation when new data is received
+  useEffect(() => {
+    // Don't animate if there's no data
+    if (props.data.length === 0) {
+      return;
+    }
+
+    // Check if we received new data by comparing length and first item date
+    // Lenght because starts with nothing then with about 40 candles, symbol because will be different each roll
+    const currentDataLength = props.data.length;
+    const currentSymbol = props.data[0].symbol;
+
+    // Only trigger animation if the data has actually changed (length or symbol)
+    if (
+      currentDataLength !== prevDataLengthRef.current ||
+      currentSymbol !== prevDataFirstDateRef.current
+    ) {
+      // Update refs for next comparison
+      prevDataLengthRef.current = currentDataLength;
+      prevDataFirstDateRef.current = currentSymbol;
+
+      // Reset animation state and start
+      setAnimatedCandleCount(0);
+      setIsAnimating(true);
+    }
+  }, [props.data]);
+
+  // Animation effect
+  useEffect(() => {
+    if (!isAnimatingData) {
+      return;
+    }
+
+    let lastTimestamp = 0;
+    const animate = (timestamp: number) => {
+      if (!isAnimatingData) {
+        return;
+      }
+
+      if (lastTimestamp === 0 || timestamp - lastTimestamp > ANIMATION_SPEED) {
+        lastTimestamp = timestamp;
+        setAnimatedCandleCount((prev) => {
+          if (prev >= props.data.length) {
+            setIsAnimating(false);
+            return props.data.length;
+          }
+          return prev + 1;
+        });
+      }
+
+      animationDataRef.current = requestAnimationFrame(animate);
+    };
+
+    animationDataRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationDataRef.current) {
+        cancelAnimationFrame(animationDataRef.current);
+      }
+    };
+  }, [isAnimatingData, props.data.length]);
+
+  useEffect(() => {
+    // Only trigger the animation once
+    if (prevResponseCounterRef.current !== props.responseCounter) {
+      setAnimatedResponseCandleCount(0);
+      setIsAnimatingResponse(true);
+    }
+  }, [props.responseCounter]);
+
+  useEffect(() => {
+    if (!isAnimatingResponse) {
+      return;
+    }
+    let lastTimestamp = 0;
+    const animate = (timestamp: number) => {
+      if (!isAnimatingResponse) {
+        return;
+      }
+
+      if (lastTimestamp === 0 || timestamp - lastTimestamp > ANIMATION_SPEED) {
+        lastTimestamp = timestamp;
+        setAnimatedResponseCandleCount((prev) => {
+          if (prev >= props.data.length) {
+            setIsAnimatingResponse(false);
+            return props.data.length - 1;
+          }
+          return prev + 1;
+        });
+      }
+
+      animationResponseRef.current = requestAnimationFrame(animate);
+    };
+
+    animationResponseRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationResponseRef.current) {
+        cancelAnimationFrame(animationResponseRef.current);
+      }
+    };
+  }, [isAnimatingData, isAnimatingResponse, props.data.length]);
+
+  // Draw horizontal/vertical grid lines in the background
+  const drawBackgroundGridLines = useCallback(
     (ctx: CanvasRenderingContext2D, width: number, height: number) => {
       ctx.strokeStyle = "#DDD";
       ctx.lineWidth = 1;
+      // Horizontal lines
       for (let i = 1; i <= NUMBER_PRICE_SHOW; i++) {
         const y = (i / NUMBER_PRICE_SHOW) * height;
         ctx.beginPath();
@@ -46,6 +170,7 @@ export function StockCanvas(props: StockCanvasProps) {
         ctx.lineTo(width, y);
         ctx.stroke();
 
+        // Add price text
         const price = yPixelToPrice(y, height, props.minPrice, props.maxPrice);
         ctx.fillStyle = "black";
         const yText = y - 4;
@@ -55,13 +180,15 @@ export function StockCanvas(props: StockCanvasProps) {
         }
       }
 
+      // Vertical lines
       for (let i = 0; i < props.futureDays; i++) {
         const x = props.data.length * candleWidth + i * candleWidth;
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, height);
         ctx.stroke();
-        ctx.fillText(`+${i + 1}`, x + 2, height - 2);
+        // Text of the days to guess (+1, +2, ...)
+        ctx.fillText(`+${i + 1}`, x - 2, height - 2);
       }
     },
     [
@@ -87,7 +214,7 @@ export function StockCanvas(props: StockCanvasProps) {
         ctx.beginPath();
         ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
         ctx.fillStyle = `rgba(192, 192, 192, ${
-          props.response === undefined ? 1 : 0.3
+          props.response === undefined ? 1 : 0.2
         })`;
         ctx.fill();
       }
@@ -211,10 +338,12 @@ export function StockCanvas(props: StockCanvasProps) {
       }
       ctx.stroke();
     };
-    const drawChart = () => {
+
+    const drawFullChart = () => {
+      // Reset the canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw the area the user can predict the price
+      // Draw the area the user can predict the price (the user can draw, we make the background light gray)
       ctx.fillStyle = "#F0F0F0";
       ctx.fillRect(
         props.data.length * candleWidth,
@@ -223,25 +352,40 @@ export function StockCanvas(props: StockCanvasProps) {
         canvas.height
       );
 
-      // Draw each day's candle
-      props.data.forEach((stock, index) => {
+      // Draw the candles on the left-side first
+      // Draw only up to the animated candle count
+      const displayCount = isAnimatingData
+        ? animatedDataCandleCount
+        : props.data.length;
+      props.data.slice(0, displayCount).forEach((stock, index) => {
         drawSingleStock(ctx, stock, index);
       });
+
+      // Draw the response candles (solution on the right side)
       if (props.response !== undefined) {
-        for (let i = 0; i < props.response.stocks.length; i++) {
-          drawSingleStock(ctx, props.response.stocks[i], props.data.length + i);
-        }
+        // Draw only up to the animated candle count
+        const displayResponseCount = isAnimatingResponse
+          ? animatedResponseCandleCount
+          : props.response.stocks.length;
+
+        props.response.stocks
+          .slice(0, displayResponseCount)
+          .forEach((stock, index) => {
+            drawSingleStock(ctx, stock, props.data.length + index);
+          });
+
+        // Add the Bollinger Bands
         drawBB20(ctx, props.response.stocks, props.response.bb20);
       }
 
-      drawGrid(ctx, canvas.width, canvas.height);
+      drawBackgroundGridLines(ctx, canvas.width, canvas.height);
       drawUserPoints(ctx);
     };
 
-    drawChart();
+    drawFullChart();
   }, [
     candleWidth,
-    drawGrid,
+    drawBackgroundGridLines,
     props.data,
     props.futureDays,
     props.maxPrice,
@@ -249,6 +393,10 @@ export function StockCanvas(props: StockCanvasProps) {
     props.response,
     props.userDrawnPrices,
     stockIndexToX,
+    animatedDataCandleCount,
+    isAnimatingData,
+    isAnimatingResponse,
+    animatedResponseCandleCount,
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {

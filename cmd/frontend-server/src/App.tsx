@@ -36,6 +36,7 @@ function App() {
   const [response, setResponse] = useState<SolutionResponse | undefined>(
     undefined
   );
+  const [responseCounter, setResponseCounter] = useState(0);
   const { isPending, isError, data, error, refetch } = useQuery({
     queryKey: ["stocks"],
     queryFn: getStocks,
@@ -101,7 +102,8 @@ function App() {
     console.log(userDayPrices);
     const response = await postSolution.mutateAsync(userDayPrices);
     setResponse(response);
-  }, [getUserDrawnPrices, postSolution]);
+    setResponseCounter(() => responseCounter + 1);
+  }, [getUserDrawnPrices, postSolution, responseCounter]);
 
   const clear = () => {
     setUserDrawnPoints([]);
@@ -138,6 +140,7 @@ function App() {
                 }
               }}
               clearUserDrawnPrices={clear}
+              responseCounter={responseCounter}
             />
           )}
         </div>

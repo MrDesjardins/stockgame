@@ -1,7 +1,6 @@
 package logic
 
 import (
-	"fmt"
 	"math"
 	"stockgame/internal/model"
 )
@@ -89,10 +88,6 @@ func CalculateBollingerBands(stockInfo []model.Stock, day int) map[string]model.
 			UpperBand: upperBand,
 			LowerBand: lowerBand,
 		}
-
-		// Debugging: Print values for verification
-		fmt.Printf("Date: %s, Close: %.2f, Avg: %.2f, StdDev: %.2f, Upper: %.2f, Lower: %.2f\n",
-			stockInfo[i].Date, stockInfo[i].Close, average, standardDeviation, upperBand, lowerBand)
 	}
 
 	return mapDayPrices
