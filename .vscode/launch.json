@@ -11,6 +11,20 @@
       "mode": "debug",
       "program": "${file}",
       "cwd": "/home/misterp2d/code/go/stockgame"
+    },
+    {
+      "name": "Attach to process",
+      "type": "go",
+      "request": "attach",
+      "mode": "local",
+      "processId": "${command:pickProcess}"
+    },
+    {
+      "name": "Attach to Stock Game Process",
+      "type": "go",
+      "request": "attach",
+      "mode": "local",
+      "processId": "/home/misterp2d/code/go/stockgame/tmp/main"
     }
   ]
 }
