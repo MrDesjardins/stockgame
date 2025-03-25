@@ -25,7 +25,7 @@ func TestGetRandomStock(t *testing.T) {
 
 func TestGetRandomStockFromPersistence(t *testing.T) {
 	stocks := GetRandomStockFromPersistence()
-	if len(stocks) > 0 {
+	if len(stocks) == 0 {
 		t.Errorf("Expected a stock symbol")
 	}
 }

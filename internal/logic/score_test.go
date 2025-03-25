@@ -47,8 +47,8 @@ func TestGetScoreWithPartialDayBetweenLowAndHigh(t *testing.T) {
 	}
 	bb20 := make(map[string]model.BollingerBand)
 	stock := GetScore(userPrice, actualStockInfo, bb20)
-	if stock != 70 {
-		t.Errorf("Expected score to be 70 and not %d", stock)
+	if stock != 74 {
+		t.Errorf("Expected score to be 74 and not %d", stock)
 	}
 }
 

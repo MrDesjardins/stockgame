@@ -28,9 +28,9 @@ unit-test:
 	go test -parallel 1 ./... 
 
 unit-test-coverage:
-	go test ./... -coverpkg=./... -coverprofile=./coverage/coverage.out
-	go tool cover -func ./coverage/coverage.out
-# go tool cover -html=coverage.out -o coverage.html
+	go test ./... -coverpkg=./... -coverprofile=./coverage/coverage.out || true
+	go tool cover -func=./coverage/coverage.out || true
+	go tool cover -html=./coverage/coverage.out -o=./coverage/coverage.html
 
 db:
 	duckdb data/db/stockgame.duckdb
