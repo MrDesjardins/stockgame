@@ -6,8 +6,9 @@
 .PHONY: unit-test-coverage
 .PHONY: db
 .PHONY: release
+.PHONY: generate-constants
 
-dev:
+dev: generate-constants
 	air -c .air.toml & \
 	(cd cmd/frontend-server && . ~/.nvm/nvm.sh && nvm use && npm run dev) & \
 	wait
@@ -35,6 +36,9 @@ unit-test-coverage:
 db:
 	duckdb data/db/stockgame.duckdb
 
-release:
+release: generate-constants
 	go build -o bin/api-server cmd/api-server/main.go
 	go build -o bin/data-loader cmd/data-loader/main.go
+
+generate-constants:
+	go run cmd/back-to-front/main.go

@@ -46,7 +46,6 @@ select count(*) from stocks;
 
 ## Backlog
 
-- [ ] Send a score that is not a single number but the details of the score
 - [ ] Animate the score into the canvas making it more "game" like
 - [ ] Make sure the user sent 10 days of prices on the submission
 - [ ] Display the volume on the canvas
@@ -75,3 +74,4 @@ select count(*) from stocks;
 - [x] Create an API endoint that take the user inputs and result a score
 - [x] Show the solution that diff the user input and the stock price
 - [x] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
+- [x] Send a score that is not a single number but the details of the score

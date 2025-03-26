@@ -9,6 +9,7 @@ import {
 } from "./model/stock";
 import { useCallback, useMemo, useState } from "react";
 import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
+import { User_stock_to_guess } from "./dynamicConstants";
 
 async function getStocks(): Promise<Stock[]> {
   const data = await fetch("http://localhost:8080/stocks");
@@ -30,7 +31,7 @@ async function postUserDayPrice(
 }
 
 function App() {
-  const futureDays = 10;
+  const futureDays = User_stock_to_guess;
   const width = 800;
   const height = 600;
   const [response, setResponse] = useState<SolutionResponse | undefined>(
@@ -65,7 +66,10 @@ function App() {
     () => (data == undefined ? 0 : Math.max(...data.map((s) => s.high)) * 1.15),
     [data]
   );
-  const totalDays = useMemo(() => (data?.length ?? 0) + futureDays, [data]);
+  const totalDays = useMemo(
+    () => (data?.length ?? 0) + futureDays,
+    [data?.length, futureDays]
+  );
 
   const [userDrawnPoints, setUserDrawnPoints] = useState<
     { x: number; y: number }[]
@@ -83,19 +87,24 @@ function App() {
       const day = xPixelToDay(dayPrice.x, width, data.length + futureDays);
       const price = yPixelToPrice(dayPrice.y, height, minPrice, maxPrice);
       if (lastDay === -1 || lastDay === day) {
+        // First point or same day
         lastDay = day;
         sumDay += price;
         countDay += 1;
       } else {
+        // New day
         onPricePerDay.push({ day: lastDay, price: sumDay / countDay });
         lastDay = day;
         sumDay = price;
         countDay = 1;
       }
     }
-    onPricePerDay.push({ day: lastDay, price: sumDay / countDay });
+    // Add the last day
+    if (lastDay !== -1) {
+      onPricePerDay.push({ day: lastDay, price: sumDay / countDay });
+    }
     return onPricePerDay;
-  }, [data, maxPrice, minPrice, userDrawnPoints]);
+  }, [data, futureDays, maxPrice, minPrice, userDrawnPoints]);
 
   const submitSolution = useCallback(async () => {
     const userDayPrices = getUserDrawnPrices();
@@ -141,6 +150,7 @@ function App() {
               }}
               clearUserDrawnPrices={clear}
               responseCounter={responseCounter}
+              numberDaysUserNeedToGuess={User_stock_to_guess}
             />
           )}
         </div>
@@ -169,7 +179,11 @@ function App() {
                 {response.symbol}
                 <span id="date">{response.stocks[0].date}</span>
               </h2>
-              <p>Score: {response.score}</p>
+              <div>Score: {response.score.total}</div>
+              <div>In direction: {response.score.inDirection}</div>
+              <div>In Low-High: {response.score.inLowHigh}</div>
+              <div>In Open-Close: {response.score.inOpenClose}</div>
+              <div>In Bollinger Band: {response.score.inBollinger}</div>
             </div>
           )}
         </div>

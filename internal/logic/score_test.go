@@ -47,8 +47,8 @@ func TestGetScoreWithPartialDayBetweenLowAndHigh(t *testing.T) {
 	}
 	bb20 := make(map[string]model.BollingerBand)
 	stock := GetScore(userPrice, actualStockInfo, bb20)
-	if stock != 74 {
-		t.Errorf("Expected score to be 74 and not %d", stock)
+	if stock.Total != 76 {
+		t.Errorf("Expected score to be 76 and not %d", stock.Total)
 	}
 }
 
@@ -68,21 +68,54 @@ func TestCalculateBollingBands(t *testing.T) {
 	}
 
 	bb20 := CalculateBollingerBands(stockInfo, 20)
+	for k, v := range bb20 {
+		fmt.Printf("Date: %s, LowerBand: %f, UpperBand: %f\n", k, v.LowerBand, v.UpperBand)
+	}
 	if len(bb20) != 20 {
 		t.Errorf("Expected 1 Bollinger band and not %d", len(bb20))
 	}
-	if !almostEqual(-1.332, bb20["2022-01-21"].LowerBand, 0.001) {
+	if !almostEqual(-1.032, bb20["2022-01-21"].LowerBand, 0.001) {
 		t.Errorf("Expected LowerBand must not be %f", bb20["2022-01-21"].LowerBand)
 	}
-	if !almostEqual(22.332, bb20["2022-01-21"].UpperBand, 0.001) {
+	if !almostEqual(22.032, bb20["2022-01-21"].UpperBand, 0.001) {
 		t.Errorf("Expected LowerBand must not be %f", bb20["2022-01-21"].UpperBand)
 	}
 
-	if !almostEqual(17.667, bb20["2022-01-40"].LowerBand, 0.001) {
+	if !almostEqual(17.967, bb20["2022-01-40"].LowerBand, 0.001) {
 		t.Errorf("Expected LowerBand must not be %f", bb20["2022-01-40"].LowerBand)
 	}
-	if !almostEqual(41.332, bb20["2022-01-40"].UpperBand, 0.001) {
+	if !almostEqual(41.032, bb20["2022-01-40"].UpperBand, 0.001) {
 		t.Errorf("Expected LowerBand must not be %f", bb20["2022-01-40"].UpperBand)
+	}
+}
+
+func TestCalculateBollingBands2(t *testing.T) {
+	stockInfo := []model.Stock{}
+	for i := 0; i < 10; i++ {
+		stockInfo = append(stockInfo, model.Stock{
+			Id:       10002,
+			Date:     fmt.Sprintf("2022-01-%02d", i+1),
+			Open:     100,
+			High:     100,
+			Low:      100,
+			Close:    float64(9 + (i%2)*2), // 9 or 11
+			AdjClose: 100,
+			Volume:   100,
+		})
+	}
+
+	bb20 := CalculateBollingerBands(stockInfo, 4)
+	for k, v := range bb20 {
+		fmt.Printf("Date: %s, LowerBand: %f, Average: %f, UpperBand: %f\n", k, v.LowerBand, v.Average, v.UpperBand)
+	}
+	if len(bb20) != 6 {
+		t.Errorf("Expected 1 Bollinger band and not %d", len(bb20))
+	}
+	if !almostEqual(8.000, bb20["2022-01-05"].LowerBand, 0.001) {
+		t.Errorf("Expected LowerBand must not be %f", bb20["2022-01-05"].LowerBand)
+	}
+	if !almostEqual(12.000, bb20["2022-01-05"].UpperBand, 0.001) {
+		t.Errorf("Expected LowerBand must not be %f", bb20["2022-01-05"].UpperBand)
 	}
 }
 

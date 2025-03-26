@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"path/filepath"
-	"runtime"
+	"stockgame/internal/util"
 
 	_ "github.com/marcboeker/go-duckdb" // DuckDB driver
 	_ "modernc.org/sqlite"
@@ -11,25 +11,12 @@ import (
 
 var db *sql.DB
 
-// GetProjectRoot returns the absolute path to the project root directory
-func GetProjectRoot() string {
-	// Get the file path of the current file (db.go)
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("Cannot get current file path")
-	}
-
-	// Navigate up from internal/database to project root
-	dir := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
-	return dir
-}
-
 // Connect to DB
 func ConnectDB() {
 	var err error
 
 	// Get the absolute path to the database file
-	dbPath := filepath.Join(GetProjectRoot(), "data", "db", "stockgame.duckdb")
+	dbPath := filepath.Join(util.GetProjectRoot(), "data", "db", "stockgame.duckdb")
 	println("Database path: ", dbPath)
 	db, err = sql.Open("duckdb", dbPath)
 	if err != nil {

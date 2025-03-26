@@ -22,9 +22,16 @@ type UserSolutionRequest struct {
 	DayPrice  []DayPrice `json:"estimatedDayPrices"`
 }
 
+type UserScoreResponse struct {
+	Total       int `json:"total"`
+	InLowHigh   int `json:"inLowHigh"`
+	InOpenClose int `json:"inOpenClose"`
+	InBollinger int `json:"inBollinger"`
+	InDirection int `json:"inDirection"`
+}
 type UserSolutionResponse struct {
 	Symbol string                   `json:"symbol"`
-	Score  int                      `json:"score"`
+	Score  UserScoreResponse        `json:"score"`
 	Stocks []Stock                  `json:"stocks"`
 	BB20   map[string]BollingerBand `json:"bb20"`
 }
@@ -32,5 +39,6 @@ type UserSolutionResponse struct {
 type BollingerBand struct {
 	Date      string  `json:"date"`
 	UpperBand float64 `json:"upperBand"`
+	Average   float64 `json:"average"`
 	LowerBand float64 `json:"lowerBand"`
 }

@@ -25,8 +25,9 @@ export interface StockCanvasProps {
   addUserDrawnPrice: (x: number, y: number) => void;
   clearUserDrawnPrices: () => void;
   responseCounter: number;
+  numberDaysUserNeedToGuess: number;
 }
-const NUMBER_PRICE_SHOW = 10;
+
 const ANIMATION_SPEED = 20; // ms per candle
 export function StockCanvas(props: StockCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -163,8 +164,8 @@ export function StockCanvas(props: StockCanvasProps) {
       ctx.strokeStyle = "#DDD";
       ctx.lineWidth = 1;
       // Horizontal lines
-      for (let i = 1; i <= NUMBER_PRICE_SHOW; i++) {
-        const y = (i / NUMBER_PRICE_SHOW) * height;
+      for (let i = 1; i <= props.numberDaysUserNeedToGuess; i++) {
+        const y = (i / props.numberDaysUserNeedToGuess) * height;
         ctx.beginPath();
         ctx.moveTo(0, y);
         ctx.lineTo(width, y);
@@ -175,7 +176,7 @@ export function StockCanvas(props: StockCanvasProps) {
         ctx.fillStyle = "black";
         const yText = y - 4;
         ctx.fillText(`$${price.toFixed(2)}`, 2, yText);
-        if (i < NUMBER_PRICE_SHOW) {
+        if (i < props.numberDaysUserNeedToGuess) {
           ctx.fillText(`$${price.toFixed(2)}`, props.width - 30, yText);
         }
       }
@@ -198,6 +199,7 @@ export function StockCanvas(props: StockCanvasProps) {
       props.maxPrice,
       props.minPrice,
       props.width,
+      props.numberDaysUserNeedToGuess,
     ]
   );
 
@@ -220,6 +222,23 @@ export function StockCanvas(props: StockCanvasProps) {
       }
     };
 
+    const drawVolume = (ctx: CanvasRenderingContext2D) => {
+      const volumeMax = Math.max(...props.data.map((stock) => stock.volume), 0);
+      const volumeHeight = canvas.height / 4;
+      const padding = 2;
+      for (let i = 0; i < props.data.length; i++) {
+        const stock = props.data[i];
+        const x = stockIndexToX(i);
+        const y = priceToYPixel(stock.volume, volumeHeight, 0, volumeMax);
+        ctx.fillStyle = `rgba(192, 192, 192, 0.7)`;
+        ctx.fillRect(
+          x + padding,
+          canvas.height - y,
+          candleWidth - 2 * padding,
+          y
+        );
+      }
+    };
     const drawSingleStock = (
       ctx: CanvasRenderingContext2D,
       stock: Stock,
@@ -380,6 +399,7 @@ export function StockCanvas(props: StockCanvasProps) {
 
       drawBackgroundGridLines(ctx, canvas.width, canvas.height);
       drawUserPoints(ctx);
+      drawVolume(ctx);
     };
 
     drawFullChart();
