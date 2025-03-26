@@ -399,7 +399,7 @@ export function StockCanvas(props: StockCanvasProps) {
     animatedResponseCandleCount,
   ]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = (_e: React.MouseEvent) => {
     if (props.response === undefined) {
       props.clearUserDrawnPrices();
     }

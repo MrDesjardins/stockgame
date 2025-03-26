@@ -15,7 +15,7 @@ func GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollin
 	if len(userPrices) == 0 || len(actualStockInfo) == 0 {
 		return score
 	}
-	for i := 0; i < len(userPrices); i++ {
+	for i := range userPrices {
 		if i >= len(actualStockInfo) { // In case
 			break
 		}
