@@ -7,12 +7,28 @@ import (
 )
 
 func GetRandomStockWithRandomDayRange(numberOfDays int) []model.Stock {
-	stocks := GetRandomStockFromPersistence()
-	if len(stocks) < numberOfDays {
-		return stocks
+	for numberOfTry := 0; numberOfTry < 100; numberOfTry++ {
+		stocks := GetRandomStockFromPersistence()
+
+		// Check if there is activity (volume) for the days of the stock
+		volume := 0
+		for _, stock := range stocks {
+
+			volume += stock.Volume
+		}
+		volumeAverage := volume / len(stocks)
+		println("Volume average: ", volumeAverage)
+		if volumeAverage < 25000 {
+			continue // Try again
+		}
+
+		if len(stocks) < numberOfDays {
+			continue // Try again
+		}
+		index := rand.IntN(len(stocks) - numberOfDays)
+		return stocks[index : index+numberOfDays] // Found a good candidate
 	}
-	index := rand.IntN(len(stocks) - numberOfDays)
-	return stocks[index : index+numberOfDays]
+	return []model.Stock{}
 }
 
 func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
