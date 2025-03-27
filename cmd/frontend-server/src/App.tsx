@@ -10,16 +10,17 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
 import { User_stock_to_guess } from "./dynamicConstants";
-
+import { getApiUrl } from "./logic/apiLogics";
+console.log(import.meta.env.VITE_API_URL);
 async function getStocks(): Promise<Stock[]> {
-  const data = await fetch("http://localhost:8080/stocks");
+  const data = await fetch(`${getApiUrl()}/stocks`);
   return data.json();
 }
 
 async function postUserDayPrice(
   requestData: SolutionRequest
 ): Promise<SolutionResponse> {
-  const data = await fetch(`http://localhost:8080/solution`, {
+  const data = await fetch(`${getApiUrl()}/solution`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

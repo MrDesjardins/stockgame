@@ -31,12 +31,12 @@ func getStockInTimeRange(c *gin.Context) {
 		return
 	}
 	// Make sure we are not querying for more than 30 days
-	startDateGo, err := time.Parse("2006-01-20", startDate)
+	startDateGo, err := time.Parse("2006-01-02", startDate)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "startDate is not in the correct format"})
 		return
 	}
-	endDateGo, err := time.Parse("2006-01-20", endDate)
+	endDateGo, err := time.Parse("2006-01-02", endDate)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "endDate is not in the correct format"})
 		return
@@ -86,7 +86,7 @@ func main() {
 	if err != nil {
 		panic("Error loading .env file")
 	}
-	port := os.Getenv("API_PORT")
+	port := os.Getenv("VITE_API_PORT")
 	database.ConnectDB()
 	router := gin.Default()
 	// Cors

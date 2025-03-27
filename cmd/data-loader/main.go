@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
 
@@ -28,10 +29,89 @@ func createTables(db *sql.DB) {
     volume INTEGER NOT NULL
 );`)
 	if err != nil {
-		println("Cannot create table")
+		println("Cannot create stocks table")
 		panic(err)
 	}
 
+	// Create the stocks table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS stocks_info (
+    symbol VARCHAR NOT NULL,
+    name VARCHAR NOT NULL,
+		symbol_uuid VARCHAR NOT NULL,
+);`)
+	if err != nil {
+		println("Cannot create stocks_info table")
+		panic(err)
+	}
+}
+
+func insertCompanyInfo(db *sql.DB) {
+	dirPath := "./data/raw/symbols_valid_meta.csv"
+	startTime := time.Now()
+
+	// Delete existing records before inserting
+	_, err := db.Exec("DELETE FROM stocks_info;")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("Deleted existing records")
+
+	// Open the file and read the data line by line
+	file, err := os.Open(dirPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = 12
+	reader.Comma = ','
+	reader.LazyQuotes = true
+
+	// Insert the data into the database
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	stmt, err := tx.Prepare("INSERT INTO stocks_info (symbol, name, symbol_uuid) VALUES (?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer stmt.Close()
+
+	// Skip the header
+	_, err = reader.Read()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Generate a UUID for the symbol
+		uuid := uuid.New()
+
+		_, err = stmt.Exec(row[1], row[2], uuid)
+		if err != nil {
+			log.Fatal(err)
+			tx.Rollback()
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+		tx.Rollback()
+	}
+	fmt.Println("Data insertion completed.")
+	fmt.Printf("Time taken: %v\n", time.Since(startTime))
 }
 
 func insertStocks(db *sql.DB) {
@@ -159,6 +239,7 @@ func main() {
 
 	createTables(db)
 	insertStocks(db)
+	insertCompanyInfo(db)
 
 	defer db.Close()
 }

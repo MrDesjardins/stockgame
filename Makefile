@@ -6,9 +6,10 @@
 .PHONY: unit-test-coverage
 .PHONY: db
 .PHONY: release
+.PHONY: sync-env
 .PHONY: generate-constants
 
-dev: generate-constants
+dev: sync-env generate-constants
 	air -c .air.toml & \
 	(cd cmd/frontend-server && . ~/.nvm/nvm.sh && nvm use && npm run dev) & \
 	wait
@@ -37,8 +38,14 @@ db:
 	duckdb data/db/stockgame.duckdb
 
 release: generate-constants
+	@echo "Running release build..."
 	go build -o bin/api-server cmd/api-server/main.go
 	go build -o bin/data-loader cmd/data-loader/main.go
 
+sync-env:
+	@echo "Running sync-env..."
+	cp .env ./cmd/frontend-server/.env
+
 generate-constants:
+	@echo "Running generate-constants..."
 	go run cmd/back-to-front/main.go

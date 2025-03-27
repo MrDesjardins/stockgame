@@ -46,7 +46,6 @@ select count(*) from stocks;
 
 ## Backlog Top Priorities
 
-- [ ] Remove hardcodeing URL from StockCanvas.tsx to use a environment variable
 - [ ] Obfuscate the Stock to avoid people cheating (remove stock name and date on the initial load)
 - [ ] Make the canvas more responsive (mobile friendly?)
 - [ ] Make the canvas draw with touch (mobile support?)
@@ -55,7 +54,6 @@ select count(*) from stocks;
 - [ ] Animate the score into the canvas making it more "game" like
 - [ ] Make sure the user sent 10 days of prices on the submission
 - [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
-- [ ] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
 - [ ] Create user tables (user, user scores)
 - [ ] Add a delay between submission to avoid people cheating
 - [ ] Add a leaderboard
@@ -77,3 +75,5 @@ select count(*) from stocks;
 - [x] Determine a logic to assign point (inside low/high gives X points, outside gives Y points)
 - [x] Send a score that is not a single number but the details of the score
 - [x] Display the volume on the canvas
+- [x] Remove hardcoded URL from App.tsx to use a environment variable
+- [x] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
