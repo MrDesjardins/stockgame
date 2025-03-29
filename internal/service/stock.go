@@ -6,7 +6,7 @@ import (
 	"stockgame/internal/model"
 )
 
-func GetRandomStockWithRandomDayRange(numberOfDays int) []model.Stock {
+func GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
 	for numberOfTry := 0; numberOfTry < 100; numberOfTry++ {
 		stocks := GetRandomStockFromPersistence()
 
@@ -15,6 +15,9 @@ func GetRandomStockWithRandomDayRange(numberOfDays int) []model.Stock {
 		for _, stock := range stocks {
 
 			volume += stock.Volume
+		}
+		if len(stocks) == 0 {
+			continue // Try again
 		}
 		volumeAverage := volume / len(stocks)
 		println("Volume average: ", volumeAverage)
@@ -28,25 +31,28 @@ func GetRandomStockWithRandomDayRange(numberOfDays int) []model.Stock {
 		index := rand.IntN(len(stocks) - numberOfDays)
 		return stocks[index : index+numberOfDays] // Found a good candidate
 	}
-	return []model.Stock{}
+	return []model.StockPublic{}
 }
 
-func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
-	stocks := dataaccess.GetPricesForStockInTimeRange(symbol, startDate, endDate)
+func GetStockPriceForTimeRange(symbolUUID string, startDate string, endDate string) []model.Stock {
+	stocks := dataaccess.GetPricesForStockInTimeRange(symbolUUID, startDate, endDate)
 	return stocks
 }
 
-func GetStockBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
-	stocks := dataaccess.GetStocksBeforeEqualDate(symbol, beforeDate)
+func GetStockBeforeEqualDate(symbolUUID string, beforeDate string) []model.Stock {
+	stocks := dataaccess.GetStocksBeforeEqualDate(symbolUUID, beforeDate)
+	return stocks
+}
+func GetStockInfo(symbolUUID string) model.StockInfo {
+	stock := dataaccess.GetStockInfo(symbolUUID)
+	return stock
+}
+func GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
+	stocks := dataaccess.GetStocksAfterDate(symbolUUID, afterDate)
 	return stocks
 }
 
-func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
-	stocks := dataaccess.GetStocksAfterDate(symbol, afterDate)
-	return stocks
-}
-
-func GetRandomStockFromPersistence() []model.Stock {
+func GetRandomStockFromPersistence() []model.StockPublic {
 	syms := dataaccess.GetUniqueStockSymbols()
 	symbol := GetRandomStock(syms)
 	stocks := dataaccess.GetPricesForStock(symbol)

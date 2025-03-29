@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { SolutionResponse, Stock } from "./model/stock";
+import { SolutionResponse, StockPublic } from "./model/stock";
 import {
   candelPixelWidth,
   priceToYPixel,
@@ -13,7 +13,7 @@ import {
 } from "./logic/canvasLogic";
 
 export interface StockCanvasProps {
-  data: Stock[];
+  data: StockPublic[];
   response: SolutionResponse | undefined;
   minPrice: number;
   maxPrice: number;
@@ -65,7 +65,7 @@ export function StockCanvas(props: StockCanvasProps) {
     // Check if we received new data by comparing length and first item date
     // Lenght because starts with nothing then with about 40 candles, symbol because will be different each roll
     const currentDataLength = props.data.length;
-    const currentSymbol = props.data[0].symbol;
+    const currentSymbol = props.data[0].symbol_uuid;
 
     // Only trigger animation if the data has actually changed (length or symbol)
     if (
@@ -241,7 +241,7 @@ export function StockCanvas(props: StockCanvasProps) {
     };
     const drawSingleStock = (
       ctx: CanvasRenderingContext2D,
-      stock: Stock,
+      stock: StockPublic,
       index: number
     ) => {
       const x = stockIndexToX(index);
@@ -298,12 +298,15 @@ export function StockCanvas(props: StockCanvasProps) {
 
     const drawBB20 = (
       ctx: CanvasRenderingContext2D,
-      stocks: Stock[],
+      stocks: StockPublic[],
       bb20: Record<string, { upperBand: number; lowerBand: number }>
     ) => {
       ctx.strokeStyle = "blue";
       ctx.lineWidth = 1;
       const firstStock = stocks[0];
+      if (Object.keys(bb20).length === 0) {
+        return;
+      }
       let x = stockIndexToX(props.data.length - 1);
       let y = priceToYPixel(
         bb20[firstStock.date].upperBand,

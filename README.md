@@ -46,7 +46,7 @@ select count(*) from stocks;
 
 ## Backlog Top Priorities
 
-- [ ] Obfuscate the Stock to avoid people cheating (remove stock name and date on the initial load)
+- [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] Make the canvas more responsive (mobile friendly?)
 - [ ] Make the canvas draw with touch (mobile support?)
 
@@ -77,3 +77,4 @@ select count(*) from stocks;
 - [x] Display the volume on the canvas
 - [x] Remove hardcoded URL from App.tsx to use a environment variable
 - [x] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
+- [x] Obfuscate the Stock to avoid people cheating (remove stock name and date on the initial load)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"stockgame/internal/database"
 	"stockgame/internal/logic"
@@ -21,34 +20,6 @@ func getStocks(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, stock)
 }
 
-func getStockInTimeRange(c *gin.Context) {
-
-	stockSymbol := c.Query("symbol")
-	startDate := c.Query("startDate")
-	endDate := c.Query("endDate")
-	if stockSymbol == "" || startDate == "" || endDate == "" {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "symbol, startDate, and endDate are required query parameters"})
-		return
-	}
-	// Make sure we are not querying for more than 30 days
-	startDateGo, err := time.Parse("2006-01-02", startDate)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "startDate is not in the correct format"})
-		return
-	}
-	endDateGo, err := time.Parse("2006-01-02", endDate)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "endDate is not in the correct format"})
-		return
-	}
-	if endDateGo.Sub(startDateGo).Hours()/24 > 30 {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Cannot query for more than 30 days"})
-		return
-	}
-	stock := service.GetStockPriceForTimeRange(stockSymbol, startDate, endDate)
-	c.IndentedJSON(http.StatusOK, stock)
-}
-
 func solution(c *gin.Context) {
 	// Read the body of the request
 	// Bind JSON directly to a struct
@@ -58,23 +29,25 @@ func solution(c *gin.Context) {
 		return
 	}
 	// Extract values from the struct
-	stockSymbol := userSolution.Symbol
+	symbolUUID := userSolution.SymbolUUID
 	afterDate := userSolution.AfterDate
 	dayPrice := userSolution.DayPrice
-	if stockSymbol == "" || afterDate == "" {
+	if symbolUUID == "" || afterDate == "" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "symbol and afterDate are required query parameters"})
 		return
 	}
 
 	// Get stock data (Assuming this function exists)
-	realStocksBeforeDate := service.GetStockBeforeEqualDate(stockSymbol, afterDate)
-	realStocksAfterDate := service.GetStocksAfterDate(stockSymbol, afterDate)
+	real := service.GetStockInfo(symbolUUID)
+	realStocksBeforeDate := service.GetStockBeforeEqualDate(symbolUUID, afterDate)
+	realStocksAfterDate := service.GetStocksAfterDate(symbolUUID, afterDate)
 	fullList := append(realStocksBeforeDate, realStocksAfterDate...) // To calculuate Bollinger Bands we need the price before and after the date
 	// Score
 	bollinger20Days := logic.CalculateBollingerBands(fullList, 20)
 	score := logic.GetScore(dayPrice, realStocksAfterDate, bollinger20Days)
 	solutionResponse := model.UserSolutionResponse{
-		Symbol: stockSymbol,
+		Symbol: real.Symbol,
+		Name:   real.Name,
 		Score:  score,
 		Stocks: realStocksAfterDate,
 		BB20:   bollinger20Days,
@@ -103,7 +76,6 @@ func main() {
 		c.Next()
 	})
 	router.GET("/stocks", getStocks)
-	router.GET("/stocksInTime", getStockInTimeRange) // Not used for now
 	router.POST("/solution", solution)
 
 	router.Run(fmt.Sprintf("localhost:%s", port))

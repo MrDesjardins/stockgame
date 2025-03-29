@@ -5,14 +5,14 @@ import {
   SolutionDayPrice,
   SolutionRequest,
   SolutionResponse,
-  Stock,
+  StockPublic,
 } from "./model/stock";
 import { useCallback, useMemo, useState } from "react";
 import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
 import { User_stock_to_guess } from "./dynamicConstants";
 import { getApiUrl } from "./logic/apiLogics";
 console.log(import.meta.env.VITE_API_URL);
-async function getStocks(): Promise<Stock[]> {
+async function getStocks(): Promise<StockPublic[]> {
   const data = await fetch(`${getApiUrl()}/stocks`);
   return data.json();
 }
@@ -51,7 +51,7 @@ function App() {
         throw new Error("No data");
       }
       return postUserDayPrice({
-        symbol: lastEntry.symbol,
+        symbolUUID: lastEntry.symbol_uuid,
         afterDate: lastEntry.date,
         estimatedDayPrices: dayPrice.slice(0, futureDays),
       });
@@ -177,7 +177,7 @@ function App() {
           ) : (
             <div>
               <h2>
-                {response.symbol}
+                {response.name} ({response.symbol})
                 <span id="date">{response.stocks[0].date}</span>
               </h2>
               <div>Score: {response.score.total}</div>
