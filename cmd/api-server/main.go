@@ -39,8 +39,8 @@ func solution(c *gin.Context) {
 
 	// Get stock data (Assuming this function exists)
 	real := service.GetStockInfo(symbolUUID)
-	realStocksBeforeDate := service.GetStockBeforeEqualDate(symbolUUID, afterDate)
-	realStocksAfterDate := service.GetStocksAfterDate(symbolUUID, afterDate)
+	realStocksBeforeDate := service.GetStockBeforeEqualDate(real.Symbol, afterDate)
+	realStocksAfterDate := service.GetStocksAfterDate(real.Symbol, afterDate)
 	fullList := append(realStocksBeforeDate, realStocksAfterDate...) // To calculuate Bollinger Bands we need the price before and after the date
 	// Score
 	bollinger20Days := logic.CalculateBollingerBands(fullList, 20)

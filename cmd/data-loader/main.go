@@ -7,26 +7,45 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"stockgame/internal/database"
+	"stockgame/internal/util"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
 
+var maxWorkers = runtime.NumCPU() * 2 // Double the CPU cores
+
 func createTables(db *sql.DB) {
+	startTime := time.Now()
+	// Delete existing records before inserting
+	_, err := db.Exec("DROP TABLE stocks;")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Delete existing records before inserting
+	_, err = db.Exec("DROP TABLE stocks_info;")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Create the stocks table
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS stocks (
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS stocks (
+		id SERIAL PRIMARY KEY,
     symbol VARCHAR NULL,
-    date VARCHAR NOT NULL,
+    date DATE NOT NULL,
     open FLOAT NOT NULL,
     high FLOAT NOT NULL,
     low FLOAT NOT NULL,
     "close" FLOAT NOT NULL,
     adj_close FLOAT NOT NULL,
-    volume INTEGER NOT NULL
+    volume BIGINT NOT NULL
 );`)
 	if err != nil {
 		println("Cannot create stocks table")
@@ -35,22 +54,26 @@ func createTables(db *sql.DB) {
 
 	// Create the stocks table
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS stocks_info (
+		id SERIAL PRIMARY KEY,
     symbol VARCHAR NOT NULL,
     name VARCHAR NOT NULL,
-		symbol_uuid VARCHAR NOT NULL,
+		symbol_uuid VARCHAR NOT NULL
 );`)
 	if err != nil {
 		println("Cannot create stocks_info table")
 		panic(err)
 	}
+	fmt.Println("Data deletion completed.")
+	fmt.Printf("Time taken drop table + create table: %v\n", time.Since(startTime))
 }
 
 func insertCompanyInfo(db *sql.DB) {
-	dirPath := "./data/raw/symbols_valid_meta.csv"
+	relativePath := "./data/raw/symbols_valid_meta.csv"
+	absolutePath := filepath.Join(util.GetProjectRoot(), relativePath)
 	startTime := time.Now()
 
 	// Delete existing records before inserting
-	_, err := db.Exec("DELETE FROM stocks_info;")
+	_, err := db.Exec("TRUNCATE TABLE stocks_info;")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +81,7 @@ func insertCompanyInfo(db *sql.DB) {
 	fmt.Println("Deleted existing records")
 
 	// Open the file and read the data line by line
-	file, err := os.Open(dirPath)
+	file, err := os.Open(absolutePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +97,7 @@ func insertCompanyInfo(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	stmt, err := tx.Prepare("INSERT INTO stocks_info (symbol, name, symbol_uuid) VALUES (?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO stocks_info (symbol, name, symbol_uuid) VALUES ($1, $2, $3)")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -111,80 +134,87 @@ func insertCompanyInfo(db *sql.DB) {
 		tx.Rollback()
 	}
 	fmt.Println("Data insertion completed.")
-	fmt.Printf("Time taken: %v\n", time.Since(startTime))
+	fmt.Printf("Time taken stock_info: %v\n", time.Since(startTime))
 }
-
-func insertStocks(db *sql.DB) {
+func insertStocksParallel(db *sql.DB) {
 	dirPath := "./data/raw/stocks/"
-
 	startTime := time.Now()
 
-	// Delete existing records before inserting
-	_, err := db.Exec("DELETE FROM stocks;")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Deleted existing records")
-
-	// Read all CSV files
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		log.Fatal("Error reading directory:", err)
 	}
+	fmt.Println("Found", len(files), "files in directory")
 
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".csv") {
-			symbol := strings.TrimSuffix(file.Name(), ".csv")
-			filePath := fmt.Sprintf("%s/%s", dirPath, file.Name())
+	fileChan := make(chan string, len(files)) // Channel for file paths
+	var wg sync.WaitGroup
 
-			// Import with filename as symbol
-			query := fmt.Sprintf(`
-							COPY stocks (date, open, high, low, close, adj_close, volume)
-							FROM '%s'
-							WITH (HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
-					`, filePath)
-
-			_, err = db.Exec(query)
-			if err != nil {
-				// Preprocess the CSV file to remove rows with missing values
-				cleanedFilePath, err := preprocessCSV(filePath)
-				if err != nil {
-					fmt.Printf("Error preprocessing CSV file %s: %v\n", file.Name(), err)
-					continue
-				}
-				query := fmt.Sprintf(`
-				COPY stocks (date, open, high, low, close, adj_close, volume)
-				FROM '%s'
-				WITH (HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
-				`, cleanedFilePath)
-
-				_, err = db.Exec(query)
-				if err != nil {
-					fmt.Printf("Error copying CSV file %s: %v\n", file.Name(), err)
-					continue
-				}
-				err = os.Remove(cleanedFilePath)
-				if err != nil {
-					fmt.Printf("Error removing temp file %s: %v\n", cleanedFilePath, err)
-				}
+	// Start worker goroutines
+	for i := 0; i < maxWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for filePath := range fileChan {
+				processStockFile(db, filePath)
 			}
-
-			// Update symbol column
-			_, err = db.Exec("UPDATE stocks SET symbol = ? WHERE symbol IS NULL;", symbol)
-			if err != nil {
-				fmt.Printf("Error updating symbol for %s: %v\n", file.Name(), err)
-			}
-
-			fmt.Printf("Inserted data from %s\n", file.Name())
-		}
+		}()
 	}
 
-	fmt.Println("Data insertion completed.")
-	fmt.Printf("Time taken: %v\n", time.Since(startTime))
+	// Send file paths to the channel
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".csv") {
+			filePath := filepath.Join(dirPath, file.Name())
+			fileChan <- filePath
+		}
+	}
+	close(fileChan) // Close channel after sending all file paths
+
+	// Wait for workers to finish
+	wg.Wait()
+
+	fmt.Println("Parallel data insertion completed.")
+	fmt.Printf("Time stock taken: %v\n", time.Since(startTime))
 }
 
-// Preprocess the CSV file to remove rows with missing values
-func preprocessCSV(filePath string) (string, error) {
+// Process a single stock CSV file
+func processStockFile(db *sql.DB, filePath string) {
+	symbol := strings.TrimSuffix(filepath.Base(filePath), ".csv")
+	absolutePath := filepath.Join(util.GetProjectRoot(), filePath)
+
+	// Preprocess the CSV file
+	cleanedFilePath, err := preprocessCSV(absolutePath, symbol)
+	if err != nil {
+		fmt.Printf("Error preprocessing CSV file %s: %v\n", filePath, err)
+		return
+	}
+	defer os.Remove(cleanedFilePath) // Remove temp file after processing
+
+	// Use COPY command for fast bulk loading
+	query := fmt.Sprintf(`
+		COPY stocks (date, open, high, low, close, adj_close, volume, symbol)
+		FROM '%s'
+		WITH (FORMAT csv, HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
+	`, cleanedFilePath)
+
+	_, err = db.Exec(query)
+	if err != nil {
+		fmt.Printf("Error copying CSV file %s: %v\n", filePath, err)
+	}
+}
+
+func addIndex(db *sql.DB) {
+	startTime := time.Now()
+	// Create indexes for the stocks table
+	_, err := db.Exec(`CREATE INDEX idx_stocks_symbol_date ON stocks (symbol, date DESC);`)
+	if err != nil {
+		println("Cannot create index for stocks table")
+		panic(err)
+	}
+	fmt.Println("Adding index completed")
+	fmt.Printf("Time adding index: %v\n", time.Since(startTime))
+}
+
+func preprocessCSV(filePath string, symbol string) (string, error) {
 	tempFilePath := fmt.Sprintf("%s_cleaned.csv", filePath)
 
 	inputFile, err := os.Open(filePath)
@@ -203,6 +233,13 @@ func preprocessCSV(filePath string) (string, error) {
 	writer := csv.NewWriter(outputFile)
 	defer writer.Flush()
 
+	// Read the header and write it to the new file
+	header, err := reader.Read()
+	if err != nil {
+		return "", err
+	}
+	writer.Write(header)
+
 	// Read and process each row
 	for {
 		row, err := reader.Read()
@@ -213,33 +250,43 @@ func preprocessCSV(filePath string) (string, error) {
 			return "", err
 		}
 
-		// Skip rows with missing values
-		if len(row) == 7 && allColumnsHaveValues(row) {
-			writer.Write(row)
+		// Ensure the row has all expected columns
+		if len(row) != 7 {
+			continue // Skip rows with incorrect number of columns
 		}
+
+		// Check if any required field is empty (such as "open" column)
+		if row[1] == "" || row[6] == "" {
+			// Skip rows where essential columns are missing (e.g., "open" or "volume")
+			continue
+		}
+
+		// Clean volume column (index 6) if necessary (convert to integer format)
+		volume := row[6]
+		if strings.Contains(volume, ".") {
+			volume = strings.Split(volume, ".")[0] // Trim decimal part
+		}
+		row[6] = volume
+		row = append(row, symbol) // Add an empty string to the end of the row
+
+		// Write the cleaned row to the output file
+		writer.Write(row)
 	}
 
 	return tempFilePath, nil
 }
 
-// Helper function to check if all columns have values
-func allColumnsHaveValues(row []string) bool {
-	for _, col := range row {
-		if strings.TrimSpace(col) == "" {
-			return false
-		}
-	}
-	return true
-}
 func main() {
 	// Create the SQL Lite database if it doesn't exist
 	// Create a connection to the SQL Lite database
+	println("Max workers: ", maxWorkers)
 	database.ConnectDB()
 	db := database.GetDB()
-
+	startTime := time.Now()
 	createTables(db)
-	insertStocks(db)
+	insertStocksParallel(db)
 	insertCompanyInfo(db)
-
+	addIndex(db)
+	fmt.Printf("Total time taken: %v\n", time.Since(startTime))
 	defer db.Close()
 }

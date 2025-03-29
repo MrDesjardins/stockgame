@@ -2,11 +2,8 @@ package database
 
 import (
 	"database/sql"
-	"path/filepath"
-	"stockgame/internal/util"
 
-	_ "github.com/marcboeker/go-duckdb" // DuckDB driver
-	_ "modernc.org/sqlite"
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
@@ -15,10 +12,8 @@ var db *sql.DB
 func ConnectDB() {
 	var err error
 
-	// Get the absolute path to the database file
-	dbPath := filepath.Join(util.GetProjectRoot(), "data", "db", "stockgame.duckdb")
-	println("Database path: ", dbPath)
-	db, err = sql.Open("duckdb", dbPath)
+	dsn := "host=localhost port=5432 user=myuser password=mypassword dbname=mydb sslmode=disable connect_timeout=5"
+	db, err = sql.Open("postgres", dsn)
 	if err != nil {
 		println("Error connecting to the database")
 		panic(err)

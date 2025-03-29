@@ -8,9 +8,11 @@ The Stock Game is a simple game where the user has to guess the price of a stock
 You can install and create the database with the following commands:
 
 ```sh
-curl https://install.duckdb.org | sh
-duckdb ./data/db/stockgame.duckdb
+sudo apt-get update 
+sudo apt install postgresql
 ```
+
+Ensure you have Docker installed (for example on Windows) then it will be accessible using WSL2.
 
 ### Data
 
@@ -19,19 +21,18 @@ Download the Kaggle Dataset from the Stock Market Dataset: https://www.kaggle.co
 ```sh
 unzip stock-market-dataset.zip
 mv stock-market-dataset/* data/raw
-go run cmd/data-loader/main.go
+make init
 ```
 
-The script will insert the data into the SQL Lite database (about 2 minutes)
-
-```sh
-go run cmd/data-loader/main.go
-```
+The script will insert the data into the PostgreSQL (about 1 minutes)
 
 Confirming the data is loaded:
 
 ```sh
-duckdb data/db/stockgame.duckdb
+make db-debug
+```
+
+```sql
 select count(*) from stocks;
 ┌─────────────────┐
 │  count_star()   │
@@ -47,6 +48,7 @@ select count(*) from stocks;
 ## Backlog Top Priorities
 
 - [ ] Make more test for API endpoints (/solution) by mocking service
+- [ ] New button should clean the UI and have some kind of waiting animation
 - [ ] Make the canvas more responsive (mobile friendly?)
 - [ ] Make the canvas draw with touch (mobile support?)
 
@@ -78,3 +80,4 @@ select count(*) from stocks;
 - [x] Remove hardcoded URL from App.tsx to use a environment variable
 - [x] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
 - [x] Obfuscate the Stock to avoid people cheating (remove stock name and date on the initial load)
+- [x] Update to PostgreSQL to avoid DuckDB 1 connection limitation

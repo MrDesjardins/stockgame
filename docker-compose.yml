@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: stock_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /home/misterp2d/code/go/stockgame/data/raw/stocks:/home/misterp2d/code/go/stockgame/data/raw/stocks  # Mount the host directory to /stocks inside the container
+      
+volumes:
+  postgres_data:

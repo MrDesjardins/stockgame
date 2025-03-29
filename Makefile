@@ -23,7 +23,7 @@ api:
 init:
 	go mod tidy
 	go mod verify
-	go build
+	find ./data/raw/stocks/ -type f -name '*_cleaned*' -exec rm -f {} +
 	go run cmd/data-loader/main.go
 
 unit-test: 
@@ -36,6 +36,12 @@ unit-test-coverage:
 
 db:
 	duckdb data/db/stockgame.duckdb
+
+container-debug:
+	docker exec -it stock_postgres bash 
+
+db-debug:
+	PGPASSWORD=mypassword psql -h localhost -p 5432 -U myuser -d mydb
 
 release: generate-constants
 	@echo "Running release build..."

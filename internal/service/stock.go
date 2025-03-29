@@ -7,7 +7,7 @@ import (
 )
 
 func GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
-	for numberOfTry := 0; numberOfTry < 100; numberOfTry++ {
+	for numberOfTry := 0; numberOfTry < 10; numberOfTry++ {
 		stocks := GetRandomStockFromPersistence()
 
 		// Check if there is activity (volume) for the days of the stock
@@ -34,13 +34,13 @@ func GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
 	return []model.StockPublic{}
 }
 
-func GetStockPriceForTimeRange(symbolUUID string, startDate string, endDate string) []model.Stock {
-	stocks := dataaccess.GetPricesForStockInTimeRange(symbolUUID, startDate, endDate)
+func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
+	stocks := dataaccess.GetPricesForStockInTimeRange(symbol, startDate, endDate)
 	return stocks
 }
 
-func GetStockBeforeEqualDate(symbolUUID string, beforeDate string) []model.Stock {
-	stocks := dataaccess.GetStocksBeforeEqualDate(symbolUUID, beforeDate)
+func GetStockBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
+	stocks := dataaccess.GetStocksBeforeEqualDate(symbol, beforeDate)
 	return stocks
 }
 func GetStockInfo(symbolUUID string) model.StockInfo {

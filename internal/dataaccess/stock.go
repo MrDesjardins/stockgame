@@ -13,12 +13,12 @@ func GetPricesForStock(symbol string) []model.StockPublic {
 		FROM stocks
 		INNER JOIN stocks_info 
 			ON stocks.symbol = stocks_info.symbol
-		WHERE stocks.symbol = ?
+		WHERE stocks.symbol = $1
 		ORDER BY date ASC
 	`
 	rows, err := db.Query(query, symbol)
 	if err != nil {
-		fmt.Println("Error querying stock: ", err)
+		fmt.Println("GetPricesForStock Error querying stock: ", err, query)
 		return []model.StockPublic{}
 	}
 	defer rows.Close()
@@ -45,7 +45,7 @@ func GetUniqueStockSymbols() []string {
 	`
 	rows, err := db.Query(query)
 	if err != nil {
-		fmt.Println("Error querying stock symbols: ", err)
+		fmt.Println("GetUniqueStockSymbols Error querying stock symbols: ", err, query)
 		return []string{}
 	}
 	defer rows.Close()
@@ -61,28 +61,26 @@ func GetUniqueStockSymbols() []string {
 	return symbols
 }
 
-func GetPricesForStockInTimeRange(symbolUUID string, startDate string, endDate string) []model.Stock {
+func GetPricesForStockInTimeRange(symbol string, startDate string, endDate string) []model.Stock {
 	db := database.GetDB()
 	query := `
-		SELECT stocks.rowid, stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
+		SELECT stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
 		FROM stocks
-		INNER JOIN stocks_info
-			ON stocks.symbol = stocks_info.symbol
-		WHERE stocks_info.symbol_uuid = ?
-		AND stocks.date >= ?
-		AND stocks.date <= ?
+		WHERE stocks.symbol = $1
+		AND stocks.date >= $2
+		AND stocks.date <= $3
 		ORDER BY stocks.date ASC
 	`
-	rows, err := db.Query(query, symbolUUID, startDate, endDate)
+	rows, err := db.Query(query, symbol, startDate, endDate)
 	if err != nil {
-		fmt.Println("Error querying stock: ", err)
+		fmt.Println("GetPricesForStockInTimeRange Error querying stock: ", err, query)
 		return []model.Stock{}
 	}
 	defer rows.Close()
 	var stocks = []model.Stock{}
 	for rows.Next() {
 		var stock model.Stock
-		err := rows.Scan(&stock.Id, &stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
+		err := rows.Scan(&stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 			continue
@@ -94,28 +92,26 @@ func GetPricesForStockInTimeRange(symbolUUID string, startDate string, endDate s
 	return stocks
 }
 
-func GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
+func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
 	db := database.GetDB()
 	query := `
-		SELECT stocks.rowid, stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
+		SELECT stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
 		FROM stocks
-		INNER JOIN stocks_info
-			ON stocks.symbol = stocks_info.symbol
-		WHERE stocks_info.symbol_uuid = ?
-		AND stocks.date > ?
+		WHERE stocks.symbol = $1
+		AND stocks.date > $2
 		ORDER BY stocks.date ASC
-		LIMIT ?
+		LIMIT $3
 	`
-	rows, err := db.Query(query, symbolUUID, afterDate, model.User_stock_to_guess)
+	rows, err := db.Query(query, symbol, afterDate, model.User_stock_to_guess)
 	if err != nil {
-		fmt.Println("Error querying stock: ", err)
+		fmt.Println("GetStocksAfterDate Error querying stock: ", err, query)
 		return []model.Stock{}
 	}
 	defer rows.Close()
 	var stocks = []model.Stock{}
 	for rows.Next() {
 		var stock model.Stock
-		err := rows.Scan(&stock.Id, &stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
+		err := rows.Scan(&stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 			continue
@@ -127,28 +123,26 @@ func GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
 	return stocks
 }
 
-func GetStocksBeforeEqualDate(symbolUUID string, beforeDate string) []model.Stock {
+func GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
 	db := database.GetDB()
 	query := `
-		SELECT stocks.rowid, stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
+		SELECT  stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
 		FROM stocks
-		INNER JOIN stocks_info
-			ON stocks.symbol = stocks_info.symbol
-		WHERE stocks_info.symbol_uuid = ?
-		AND stocks.date <= ?
+		WHERE stocks.symbol = $1
+		AND stocks.date <= $2
 		ORDER BY stocks.date DESC
-		LIMIT ?
+		LIMIT $3
 	`
-	rows, err := db.Query(query, symbolUUID, beforeDate, model.Number_initial_stock_shown)
+	rows, err := db.Query(query, symbol, beforeDate, model.Number_initial_stock_shown)
 	if err != nil {
-		fmt.Println("Error querying stock: ", err)
+		fmt.Println("GetStocksBeforeEqualDate Error querying stock: ", err, query)
 		return []model.Stock{}
 	}
 	defer rows.Close()
 	var stocks = []model.Stock{}
 	for rows.Next() {
 		var stock model.Stock
-		err := rows.Scan(&stock.Id, &stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
+		err := rows.Scan(&stock.Symbol, &stock.Date, &stock.Open, &stock.High, &stock.Low, &stock.Close, &stock.AdjClose, &stock.Volume)
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 			continue
@@ -165,12 +159,12 @@ func GetStockInfo(symbolUUID string) model.StockInfo {
 	query := `
 		SELECT symbol, name, symbol_uuid
 		FROM stocks_info
-		WHERE symbol_uuid = ?
+		WHERE symbol_uuid = $1
 		LIMIT 1
 	`
 	rows, err := db.Query(query, symbolUUID)
 	if err != nil {
-		fmt.Println("Error querying stock: ", err)
+		fmt.Println("GetStockInfo Error querying stock: ", err, query)
 		return model.StockInfo{
 			SymbolUUID: symbolUUID,
 			Symbol:     "",
