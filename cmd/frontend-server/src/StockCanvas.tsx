@@ -1,10 +1,4 @@
-import React, {
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import React, { useRef, useEffect, useCallback, useMemo } from "react";
 import { SolutionResponse, StockPublic } from "./model/stock";
 import {
   candelPixelWidth,
@@ -28,21 +22,21 @@ export interface StockCanvasProps {
   numberDaysUserNeedToGuess: number;
 }
 
-const ANIMATION_SPEED = 20; // ms per candle
+const TARGET_FPS = 60;
 export function StockCanvas(props: StockCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
   // Animation of the data candles
-  const [animatedDataCandleCount, setAnimatedCandleCount] = useState(0);
-  const [isAnimatingData, setIsAnimating] = useState(false);
-  const animationDataRef = useRef<number | null>(null);
-  const prevDataLengthRef = useRef<number>(0);
-  const prevDataFirstDateRef = useRef<string>("");
-  // Animation of the response candles
-  const [animatedResponseCandleCount, setAnimatedResponseCandleCount] =
-    useState(0);
-  const [isAnimatingResponse, setIsAnimatingResponse] = useState(false);
-  const animationResponseRef = useRef<number | null>(null);
-  const prevResponseCounterRef = useRef<number>(0);
+  const dataRef = useRef<StockPublic[]>([]);
+  const responseDataRef = useRef<SolutionResponse | undefined>(undefined);
+  const minPriceRef = useRef(props.minPrice);
+  const maxPriceRef = useRef(props.maxPrice);
+  const userDrawnPricesRef = useRef<{ x: number; y: number }[]>([]);
+  const animatedDataCandleCount = useRef(0);
+  const maxFps = useRef(0);
+  const fps = useRef(0);
+  const animatedResponseLastId = useRef(0);
+  const animatedResponseCandleCount = useRef(0);
   const candleWidth = useMemo(() => {
     return candelPixelWidth(props.width, props.totalDays);
   }, [props.width, props.totalDays]);
@@ -55,375 +49,341 @@ export function StockCanvas(props: StockCanvasProps) {
     [candleWidth]
   );
 
-  // Reset and start animation when new data is received
+  // New data
   useEffect(() => {
     // Don't animate if there's no data
     if (props.data.length === 0) {
       return;
     }
-
-    // Check if we received new data by comparing length and first item date
-    // Lenght because starts with nothing then with about 40 candles, symbol because will be different each roll
-    const currentDataLength = props.data.length;
-    const currentSymbol = props.data[0].symbol_uuid;
-
-    // Only trigger animation if the data has actually changed (length or symbol)
-    if (
-      currentDataLength !== prevDataLengthRef.current ||
-      currentSymbol !== prevDataFirstDateRef.current
-    ) {
-      // Update refs for next comparison
-      prevDataLengthRef.current = currentDataLength;
-      prevDataFirstDateRef.current = currentSymbol;
-
-      // Reset animation state and start
-      setAnimatedCandleCount(0);
-      setIsAnimating(true);
-    }
+    // Reset animation state and start
+    animatedDataCandleCount.current = 0;
+    animatedResponseCandleCount.current = 0;
+    responseDataRef.current = undefined;
+    // Set the data into a ref for the animation loop
+    dataRef.current = props.data;
   }, [props.data]);
 
+  useEffect(() => {
+    // Reset animation state and start
+
+    if (
+      props.responseCounter > 0 &&
+      props.responseCounter !== animatedResponseLastId.current
+    ) {
+      responseDataRef.current = props.response;
+      animatedResponseLastId.current = props.responseCounter;
+      animatedResponseCandleCount.current = 0;
+    }
+  }, [props.response, props.responseCounter]);
+
+  useEffect(() => {
+    userDrawnPricesRef.current = props.userDrawnPrices;
+  }, [props.userDrawnPrices]);
+
+  useEffect(() => {
+    minPriceRef.current = props.minPrice;
+    maxPriceRef.current = props.maxPrice;
+  }, [props.minPrice, props.maxPrice]);
   // Animation effect
   useEffect(() => {
-    if (!isAnimatingData) {
-      return;
-    }
+    let frameCount = 0;
+    let frameRenderedCount = 0;
+    let fpsStartTime = performance.now();
 
-    let lastTimestamp = 0;
     const animate = (timestamp: number) => {
-      if (!isAnimatingData) {
-        return;
+      frameCount++;
+      if (timestamp - fpsStartTime >= 1000) {
+        maxFps.current = frameCount;
+        fps.current = frameRenderedCount;
+        frameCount = 0;
+        frameRenderedCount = 0;
+        fpsStartTime = timestamp;
       }
 
-      if (lastTimestamp === 0 || timestamp - lastTimestamp > ANIMATION_SPEED) {
-        lastTimestamp = timestamp;
-        setAnimatedCandleCount((prev) => {
-          if (prev >= props.data.length) {
-            setIsAnimating(false);
-            return props.data.length;
-          }
-          return prev + 1;
-        });
-      }
+      const ctx = canvasRef.current?.getContext("2d");
+      if (
+        ctx !== null &&
+        ctx !== undefined &&
+        frameCount % Math.floor(maxFps.current / TARGET_FPS) === 0
+      ) {
+        frameRenderedCount++;
+        // Reset the canvas
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        renderFPS(ctx, maxFps.current, fps.current);
+        drawFullChart(ctx);
 
-      animationDataRef.current = requestAnimationFrame(animate);
+        if (animatedDataCandleCount.current < dataRef.current.length) {
+          animatedDataCandleCount.current = animatedDataCandleCount.current + 1;
+        }
+
+        if (
+          animatedResponseCandleCount.current <
+          (responseDataRef.current?.stocks?.length ?? 0)
+        ) {
+          animatedResponseCandleCount.current =
+            animatedResponseCandleCount.current + 1;
+        }
+      }
+      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    animationDataRef.current = requestAnimationFrame(animate);
+    animationFrameRef.current = requestAnimationFrame(animate);
 
     return () => {
-      if (animationDataRef.current) {
-        cancelAnimationFrame(animationDataRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isAnimatingData, props.data.length]);
+  }, []);
 
-  useEffect(() => {
-    // Only trigger the animation once
-    if (prevResponseCounterRef.current !== props.responseCounter) {
-      setAnimatedResponseCandleCount(0);
-      setIsAnimatingResponse(true);
-    }
-  }, [props.responseCounter]);
-
-  useEffect(() => {
-    if (!isAnimatingResponse) {
-      return;
-    }
-    let lastTimestamp = 0;
-    const animate = (timestamp: number) => {
-      if (!isAnimatingResponse) {
-        return;
-      }
-
-      if (lastTimestamp === 0 || timestamp - lastTimestamp > ANIMATION_SPEED) {
-        lastTimestamp = timestamp;
-        setAnimatedResponseCandleCount((prev) => {
-          if (prev >= props.data.length) {
-            setIsAnimatingResponse(false);
-            return props.data.length - 1;
-          }
-          return prev + 1;
-        });
-      }
-
-      animationResponseRef.current = requestAnimationFrame(animate);
-    };
-
-    animationResponseRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationResponseRef.current) {
-        cancelAnimationFrame(animationResponseRef.current);
-      }
-    };
-  }, [isAnimatingData, isAnimatingResponse, props.data.length]);
-
+  const renderFPS = (
+    ctx: CanvasRenderingContext2D,
+    fpsMax: number,
+    fps: number
+  ) => {
+    ctx.fillStyle = "black";
+    ctx.font = "16px Arial";
+    ctx.fillText(`Max FPS: ${fpsMax}`, 10, 20);
+    ctx.fillText(`FPS: ${fps}`, 10, 40);
+  };
   // Draw horizontal/vertical grid lines in the background
-  const drawBackgroundGridLines = useCallback(
-    (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-      ctx.strokeStyle = "#DDD";
-      ctx.lineWidth = 1;
-      // Horizontal lines
-      for (let i = 1; i <= props.numberDaysUserNeedToGuess; i++) {
-        const y = (i / props.numberDaysUserNeedToGuess) * height;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
+  const drawBackgroundGridLines = (
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ) => {
+    ctx.strokeStyle = "#DDD";
+    ctx.lineWidth = 1;
+    // Horizontal lines
+    for (let i = 1; i <= props.numberDaysUserNeedToGuess; i++) {
+      const y = (i / props.numberDaysUserNeedToGuess) * height;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
 
-        // Add price text
-        const price = yPixelToPrice(y, height, props.minPrice, props.maxPrice);
-        ctx.fillStyle = "black";
-        const yText = y - 4;
-        ctx.fillText(`$${price.toFixed(2)}`, 2, yText);
-        if (i < props.numberDaysUserNeedToGuess) {
-          ctx.fillText(`$${price.toFixed(2)}`, props.width - 30, yText);
-        }
+      // Add price text
+      const price = yPixelToPrice(
+        y,
+        height,
+        minPriceRef.current,
+        maxPriceRef.current
+      );
+      ctx.fillStyle = "black";
+      const yText = y - 4;
+      ctx.fillText(`$${price.toFixed(2)}`, 2, yText);
+      if (i < props.numberDaysUserNeedToGuess) {
+        ctx.fillText(`$${price.toFixed(2)}`, props.width - 30, yText);
       }
+    }
 
-      // Vertical lines
-      for (let i = 0; i < props.futureDays; i++) {
-        const x = props.data.length * candleWidth + i * candleWidth;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-        // Text of the days to guess (+1, +2, ...)
-        ctx.fillText(`+${i + 1}`, x - 2, height - 2);
-      }
-    },
-    [
-      candleWidth,
-      props.data.length,
-      props.futureDays,
-      props.maxPrice,
-      props.minPrice,
-      props.width,
-      props.numberDaysUserNeedToGuess,
-    ]
-  );
+    // Vertical lines
+    for (let i = 0; i < props.futureDays; i++) {
+      const x = dataRef.current.length * candleWidth + i * candleWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+      // Text of the days to guess (+1, +2, ...)
+      ctx.fillText(`+${i + 1}`, x - 2, height - 2);
+    }
+  };
 
-  useEffect(() => {
-    if (!canvasRef.current) {
-      // Not yet ready, the canvas will be initialized in the next render
+  const drawUserPoints = (ctx: CanvasRenderingContext2D) => {
+    for (const point of userDrawnPricesRef.current) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = `rgba(192, 192, 192, ${
+        responseDataRef.current?.stocks ? 0.2 : 1
+      })`;
+      ctx.fill();
+    }
+  };
+
+  const drawVolume = (ctx: CanvasRenderingContext2D) => {
+    const volumeMax = Math.max(
+      ...dataRef.current.map((stock) => stock.volume),
+      0
+    );
+    const volumeHeight = ctx.canvas.height / 4;
+    const padding = 2;
+    for (let i = 0; i < dataRef.current.length; i++) {
+      const stock = dataRef.current[i];
+      const x = stockIndexToX(i);
+      const y = priceToYPixel(stock.volume, volumeHeight, 0, volumeMax);
+      ctx.fillStyle = `rgba(192, 192, 192, 0.7)`;
+      ctx.fillRect(
+        x + padding,
+        ctx.canvas.height - y,
+        candleWidth - 2 * padding,
+        y
+      );
+    }
+  };
+  const drawSingleStock = (
+    ctx: CanvasRenderingContext2D,
+    stock: StockPublic,
+    index: number
+  ) => {
+    const x = stockIndexToX(index);
+    const openY = priceToYPixel(
+      stock.open,
+      ctx.canvas.height,
+      minPriceRef.current,
+      maxPriceRef.current
+    );
+    const closeY = priceToYPixel(
+      stock.close,
+      ctx.canvas.height,
+      minPriceRef.current,
+      maxPriceRef.current
+    );
+    const highY = priceToYPixel(
+      stock.high,
+      ctx.canvas.height,
+      minPriceRef.current,
+      maxPriceRef.current
+    );
+    const lowY = priceToYPixel(
+      stock.low,
+      ctx.canvas.height,
+      minPriceRef.current,
+      maxPriceRef.current
+    );
+    const isBullish = stock.close > stock.open;
+
+    ctx.strokeStyle = "black";
+    ctx.fillStyle = isBullish ? "green" : "red";
+
+    // Draw the candle high and low
+    ctx.beginPath();
+    ctx.moveTo(x + candleWidth / 2, highY);
+    ctx.lineTo(x + candleWidth / 2, lowY);
+    ctx.stroke();
+
+    // Draw the candle body
+    ctx.fillRect(
+      x,
+      Math.min(openY, closeY),
+      candleWidth * 0.8,
+      Math.abs(closeY - openY)
+    );
+    // Draw the candle border
+    ctx.strokeRect(
+      x,
+      Math.min(openY, closeY),
+      candleWidth * 0.8,
+      Math.abs(closeY - openY)
+    );
+  };
+
+  const drawBB20 = (
+    ctx: CanvasRenderingContext2D,
+    stocks: StockPublic[],
+    bb20: Record<string, { upperBand: number; lowerBand: number }>
+  ) => {
+    ctx.strokeStyle = "blue";
+    ctx.lineWidth = 1;
+    const firstStock = stocks[0];
+    if (Object.keys(bb20).length === 0) {
       return;
     }
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d")!;
-
-    const drawUserPoints = (ctx: CanvasRenderingContext2D) => {
-      for (const point of props.userDrawnPrices) {
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
-        ctx.fillStyle = `rgba(192, 192, 192, ${
-          props.response === undefined ? 1 : 0.2
-        })`;
-        ctx.fill();
+    let x = stockIndexToX(dataRef.current.length - 1);
+    let y = priceToYPixel(
+      bb20[firstStock.date].upperBand,
+      ctx.canvas.height,
+      minPriceRef.current,
+      maxPriceRef.current
+    );
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let i = 1; i < stocks.length; i++) {
+      const stock = stocks[i];
+      const band = bb20[stock.date];
+      if (band === undefined) {
+        continue;
       }
-    };
-
-    const drawVolume = (ctx: CanvasRenderingContext2D) => {
-      const volumeMax = Math.max(...props.data.map((stock) => stock.volume), 0);
-      const volumeHeight = canvas.height / 4;
-      const padding = 2;
-      for (let i = 0; i < props.data.length; i++) {
-        const stock = props.data[i];
-        const x = stockIndexToX(i);
-        const y = priceToYPixel(stock.volume, volumeHeight, 0, volumeMax);
-        ctx.fillStyle = `rgba(192, 192, 192, 0.7)`;
-        ctx.fillRect(
-          x + padding,
-          canvas.height - y,
-          candleWidth - 2 * padding,
-          y
-        );
-      }
-    };
-    const drawSingleStock = (
-      ctx: CanvasRenderingContext2D,
-      stock: StockPublic,
-      index: number
-    ) => {
-      const x = stockIndexToX(index);
-      const openY = priceToYPixel(
-        stock.open,
-        canvas.height,
-        props.minPrice,
-        props.maxPrice
-      );
-      const closeY = priceToYPixel(
-        stock.close,
-        canvas.height,
-        props.minPrice,
-        props.maxPrice
-      );
-      const highY = priceToYPixel(
-        stock.high,
-        canvas.height,
-        props.minPrice,
-        props.maxPrice
-      );
-      const lowY = priceToYPixel(
-        stock.low,
-        canvas.height,
-        props.minPrice,
-        props.maxPrice
-      );
-      const isBullish = stock.close > stock.open;
-
-      ctx.strokeStyle = "black";
-      ctx.fillStyle = isBullish ? "green" : "red";
-
-      // Draw the candle high and low
-      ctx.beginPath();
-      ctx.moveTo(x + candleWidth / 2, highY);
-      ctx.lineTo(x + candleWidth / 2, lowY);
-      ctx.stroke();
-
-      // Draw the candle body
-      ctx.fillRect(
-        x,
-        Math.min(openY, closeY),
-        candleWidth * 0.8,
-        Math.abs(closeY - openY)
-      );
-      // Draw the candle border
-      ctx.strokeRect(
-        x,
-        Math.min(openY, closeY),
-        candleWidth * 0.8,
-        Math.abs(closeY - openY)
-      );
-    };
-
-    const drawBB20 = (
-      ctx: CanvasRenderingContext2D,
-      stocks: StockPublic[],
-      bb20: Record<string, { upperBand: number; lowerBand: number }>
-    ) => {
-      ctx.strokeStyle = "blue";
-      ctx.lineWidth = 1;
-      const firstStock = stocks[0];
-      if (Object.keys(bb20).length === 0) {
-        return;
-      }
-      let x = stockIndexToX(props.data.length - 1);
-      let y = priceToYPixel(
-        bb20[firstStock.date].upperBand,
-        canvas.height,
-        props.minPrice,
-        props.maxPrice
-      );
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      for (let i = 1; i < stocks.length; i++) {
-        const stock = stocks[i];
-        const band = bb20[stock.date];
-        if (band === undefined) {
-          continue;
-        }
-        y = priceToYPixel(
-          band.upperBand,
-          canvas.height,
-          props.minPrice,
-          props.maxPrice
-        );
-        x = stockIndexToX(props.data.length - 1 + i);
-        ctx.lineTo(x + candleWidth / 2, y);
-      }
-      ctx.stroke();
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      x = stockIndexToX(props.data.length - 1);
       y = priceToYPixel(
-        bb20[firstStock.date].lowerBand,
-        canvas.height,
-        props.minPrice,
-        props.maxPrice
+        band.upperBand,
+        ctx.canvas.height,
+        minPriceRef.current,
+        maxPriceRef.current
       );
-      ctx.moveTo(x, y);
-      for (let i = 1; i < stocks.length; i++) {
-        const stock = stocks[i];
-        const band = bb20[stock.date];
-        if (band === undefined) {
-          continue;
-        }
-        y = priceToYPixel(
-          band.lowerBand,
-          canvas.height,
-          props.minPrice,
-          props.maxPrice
-        );
-        x = stockIndexToX(props.data.length - 1 + i);
-        ctx.lineTo(x + candleWidth / 2, y);
+      x = stockIndexToX(dataRef.current.length - 1 + i);
+      ctx.lineTo(x + candleWidth / 2, y);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    x = stockIndexToX(dataRef.current.length - 1);
+    y = priceToYPixel(
+      bb20[firstStock.date].lowerBand,
+      ctx.canvas.height,
+      minPriceRef.current,
+      maxPriceRef.current
+    );
+    ctx.moveTo(x, y);
+    for (let i = 1; i < stocks.length; i++) {
+      const stock = stocks[i];
+      const band = bb20[stock.date];
+      if (band === undefined) {
+        continue;
       }
-      ctx.stroke();
-    };
-
-    const drawFullChart = () => {
-      // Reset the canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw the area the user can predict the price (the user can draw, we make the background light gray)
-      ctx.fillStyle = "#F0F0F0";
-      ctx.fillRect(
-        props.data.length * candleWidth,
-        0,
-        props.futureDays * candleWidth,
-        canvas.height
+      y = priceToYPixel(
+        band.lowerBand,
+        ctx.canvas.height,
+        minPriceRef.current,
+        maxPriceRef.current
       );
+      x = stockIndexToX(dataRef.current.length - 1 + i);
+      ctx.lineTo(x + candleWidth / 2, y);
+    }
+    ctx.stroke();
+  };
 
-      // Draw the candles on the left-side first
+  const drawFullChart = (ctx: CanvasRenderingContext2D) => {
+    // Draw the area the user can predict the price (the user can draw, we make the background light gray)
+    ctx.fillStyle = "#F0F0F0";
+    ctx.fillRect(
+      dataRef.current.length * candleWidth,
+      0,
+      props.futureDays * candleWidth,
+      ctx.canvas.height
+    );
+
+    // Draw the candles on the left-side first
+    // Draw only up to the animated candle count
+    const displayCount = animatedDataCandleCount.current;
+    dataRef.current.slice(0, displayCount).forEach((stock, index) => {
+      drawSingleStock(ctx, stock, index);
+    });
+
+    // Draw the response candles (solution on the right side)
+    if (responseDataRef.current !== undefined) {
       // Draw only up to the animated candle count
-      const displayCount = isAnimatingData
-        ? animatedDataCandleCount
-        : props.data.length;
-      props.data.slice(0, displayCount).forEach((stock, index) => {
-        drawSingleStock(ctx, stock, index);
-      });
+      const displayResponseCount = animatedResponseCandleCount.current;
+      responseDataRef.current.stocks
+        .slice(0, displayResponseCount)
+        .forEach((stock, index) => {
+          drawSingleStock(ctx, stock, dataRef.current.length + index);
+        });
 
-      // Draw the response candles (solution on the right side)
-      if (props.response !== undefined) {
-        // Draw only up to the animated candle count
-        const displayResponseCount = isAnimatingResponse
-          ? animatedResponseCandleCount
-          : props.response.stocks.length;
+      // Add the Bollinger Bands
+      drawBB20(
+        ctx,
+        responseDataRef.current.stocks,
+        responseDataRef.current.bb20
+      );
+    }
 
-        props.response.stocks
-          .slice(0, displayResponseCount)
-          .forEach((stock, index) => {
-            drawSingleStock(ctx, stock, props.data.length + index);
-          });
-
-        // Add the Bollinger Bands
-        drawBB20(ctx, props.response.stocks, props.response.bb20);
-      }
-
-      drawBackgroundGridLines(ctx, canvas.width, canvas.height);
-      drawUserPoints(ctx);
-      drawVolume(ctx);
-    };
-
-    drawFullChart();
-  }, [
-    candleWidth,
-    drawBackgroundGridLines,
-    props.data,
-    props.futureDays,
-    props.maxPrice,
-    props.minPrice,
-    props.response,
-    props.userDrawnPrices,
-    stockIndexToX,
-    animatedDataCandleCount,
-    isAnimatingData,
-    isAnimatingResponse,
-    animatedResponseCandleCount,
-  ]);
+    drawBackgroundGridLines(ctx, ctx.canvas.width, ctx.canvas.height);
+    drawUserPoints(ctx);
+    drawVolume(ctx);
+  };
 
   const handleMouseDown = (_e: React.MouseEvent) => {
-    if (props.response === undefined) {
+    if (responseDataRef.current === undefined) {
       props.clearUserDrawnPrices();
     }
   };
@@ -438,7 +398,7 @@ export function StockCanvas(props: StockCanvasProps) {
       return;
     }
 
-    if (props.response !== undefined) {
+    if (responseDataRef.current !== undefined) {
       return;
     }
     const canvas = canvasRef.current;
@@ -446,7 +406,7 @@ export function StockCanvas(props: StockCanvasProps) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     if (
-      x < stockIndexToX(props.data.length - 1) + candleWidth ||
+      x < stockIndexToX(dataRef.current.length - 1) + candleWidth ||
       x > canvas.width
     ) {
       return;
