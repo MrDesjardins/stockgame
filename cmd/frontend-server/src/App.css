@@ -1,9 +1,67 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+* {
+  box-sizing: border-box;
 }
-#date {
-  display: block;
+
+#root {
+  margin: 0 auto; /*Horizontally centered*/
+}
+
+#controls {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+#controls > button {
+  margin-right: 10px;
+}
+
+#solution-with-data {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin: 0.5rem;
+}
+
+#solution-with-data-score {
+  width: 200px;
+}
+.caption-value {
+  display: flex;
+}
+.caption > div {
+  flex: 1;
+}
+.caption {
+  font-weight: bold;
+  margin-right: 12px;
+  width: 150px;
+}
+.value {
+  text-align: right;
+  flex: 1; /*Grow the remaining space that caption is not taking from the column*/
+}
+#solution {
+  height: 200px;
+}
+#solution h2 {
+  margin: 0;
+}
+#solution > div {
+  flex: 1;
+  text-align: left;
+  gap: 20px;
+}
+
+@media (max-width: 800px) {
+  #solution-with-data {
+    flex-direction: column;
+    align-items: center;
+    margin: 5px;
+  }
+
+  #solution-with-data > div {
+    width: 100%;
+  }
 }

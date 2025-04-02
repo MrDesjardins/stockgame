@@ -47,13 +47,13 @@ select count(*) from stocks;
 
 ## Backlog Top Priorities
 
-- [ ] Animations are quick and should be configurable using the FPS mechanism. E.g. saying this should take 3 seconds to animate and we know we have a TARGET_FPS of 30 so it should take  90 frames to render the whole animation.
 - [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] New button should clean the UI and have some kind of waiting animation
 - [ ] Make the canvas more responsive (mobile friendly?)
 - [ ] Make the canvas draw with touch (mobile support?)
 
 ## Backlog Lower Priorities
+
 - [ ] Animate the score into the canvas making it more "game" like
 - [ ] Make sure the user sent 10 days of prices on the submission
 - [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas
@@ -82,3 +82,4 @@ select count(*) from stocks;
 - [x] Load the stock information into the database (name of the company, see symbols_valid_meta.csv)
 - [x] Obfuscate the Stock to avoid people cheating (remove stock name and date on the initial load)
 - [x] Update to PostgreSQL to avoid DuckDB 1 connection limitation
+- [x] Animations are quick and should be configurable using the FPS mechanism. E.g. saying this should take 3 seconds to animate and we know we have a TARGET_FPS of 30 so it should take  90 frames to render the whole animation.

@@ -6,6 +6,7 @@ import {
   yPixelToPrice,
 } from "./logic/canvasLogic";
 import { animate } from "./animate";
+import { usePrefersColorScheme } from "./usePrefersColorScheme";
 
 export interface StockCanvasProps {
   data: StockPublic[];
@@ -25,6 +26,7 @@ export interface StockCanvasProps {
 
 const TARGET_FPS = 60;
 export function StockCanvas(props: StockCanvasProps) {
+  const theme = usePrefersColorScheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   // Animation of the data candles
@@ -172,10 +174,10 @@ export function StockCanvas(props: StockCanvasProps) {
     fpsMax: number,
     fps: number
   ) => {
-    ctx.fillStyle = "black";
+    ctx.fillStyle = theme === "dark" ? "white" : "black";
     ctx.font = "16px Arial";
-    ctx.fillText(`Max FPS: ${fpsMax}`, 10, 20);
-    ctx.fillText(`FPS: ${fps}`, 10, 40);
+    ctx.fillText(`Max FPS: ${fpsMax}`, 1, 20);
+    ctx.fillText(`FPS: ${fps}`, 1, 40);
   };
   // Draw horizontal/vertical grid lines in the background
   const renderBackgroundGridLines = (
@@ -200,11 +202,16 @@ export function StockCanvas(props: StockCanvasProps) {
         minPriceRef.current,
         maxPriceRef.current
       );
-      ctx.fillStyle = "black";
+      ctx.fillStyle = theme === "dark" ? "white" : "black";
       const yText = y - 4;
       ctx.fillText(`$${price.toFixed(2)}`, 2, yText);
       if (i < props.numberDaysUserNeedToGuess) {
-        ctx.fillText(`$${price.toFixed(2)}`, props.width - 30, yText);
+        const priceStr = price.toFixed(2);
+        ctx.fillText(
+          `$${price.toFixed(2)}`,
+          props.width - (priceStr.length >= 6 ? 75 : 50),
+          yText
+        );
       }
     }
 
@@ -242,7 +249,7 @@ export function StockCanvas(props: StockCanvasProps) {
       const stock = dataRef.current[i];
       const x = stockIndexToX(i);
       const y = priceToYPixel(stock.volume, volumeHeight, 0, volumeMax);
-      ctx.fillStyle = `rgba(192, 192, 192, 0.7)`;
+      ctx.fillStyle = `rgba(192, 192, 192, 0.4)`;
       ctx.fillRect(
         x + padding,
         ctx.canvas.height - y,
@@ -375,7 +382,7 @@ export function StockCanvas(props: StockCanvasProps) {
 
   const renderFullChart = (ctx: CanvasRenderingContext2D) => {
     // Draw the area the user can predict the price (the user can draw, we make the background light gray)
-    ctx.fillStyle = "#F0F0F0";
+    ctx.fillStyle = theme === "dark" ? "#3b3b3b" : "#F0F0F0";
     ctx.fillRect(
       dataRef.current.length * candleWidth,
       0,
@@ -401,24 +408,42 @@ export function StockCanvas(props: StockCanvasProps) {
       props.clearUserDrawnPrices();
     }
   };
+  const handleTouchStart = (_e: React.TouchEvent) => {
+    if (responseDataRef.current === undefined) {
+      props.clearUserDrawnPrices();
+    }
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Support left click mouse only
+    if (e.touches.length !== 1) {
+      return;
+    }
+
+    handleMove(e.touches[0].clientX, e.touches[0].clientY);
+  };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     // Support left click mouse only
     if (e.buttons !== 1) {
       return;
     }
+
+    handleMove(e.clientX, e.clientY);
+  };
+
+  const handleMove = (xClick: number, yClick: number) => {
     // Must have the canvas ready
     if (!canvasRef.current) {
       return;
     }
-
     if (responseDataRef.current !== undefined) {
       return;
     }
+
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = xClick - rect.left;
+    const y = yClick - rect.top;
     if (
       x < stockIndexToX(dataRef.current.length - 1) + candleWidth ||
       x > canvas.width
@@ -429,15 +454,14 @@ export function StockCanvas(props: StockCanvasProps) {
   };
 
   return (
-    <div>
-      <canvas
-        ref={canvasRef}
-        width={props.width}
-        height={props.height}
-        style={{ border: "1px solid black" }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-      ></canvas>
-    </div>
+    <canvas
+      ref={canvasRef}
+      width={props.width}
+      height={props.height}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    ></canvas>
   );
 }

@@ -11,7 +11,7 @@ import { useCallback, useMemo, useState } from "react";
 import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
 import { User_stock_to_guess } from "./dynamicConstants";
 import { getApiUrl } from "./logic/apiLogics";
-console.log(import.meta.env.VITE_API_URL);
+import { APP_CONSTANTS } from "./model/app";
 async function getStocks(): Promise<StockPublic[]> {
   const data = await fetch(`${getApiUrl()}/stocks`);
   return data.json();
@@ -30,16 +30,13 @@ async function postUserDayPrice(
 
   return data.json();
 }
-
 function App() {
   const futureDays = User_stock_to_guess;
-  const width = 800;
-  const height = 600;
   const [response, setResponse] = useState<SolutionResponse | undefined>(
     undefined
   );
   const [responseCounter, setResponseCounter] = useState(0);
-  const { isPending, isError, data, error, refetch } = useQuery({
+  const { isPending, isError, data, error, refetch, isFetching } = useQuery({
     queryKey: ["stocks"],
     queryFn: getStocks,
   });
@@ -60,11 +57,11 @@ function App() {
 
   // Find the min and max to determine the vertical space needed
   const minPrice = useMemo(
-    () => (data == undefined ? 0 : Math.min(...data.map((s) => s.low)) * 0.85),
+    () => (data == undefined ? 0 : Math.min(...data.map((s) => s.low)) * APP_CONSTANTS.min_price_percent),
     [data]
   );
   const maxPrice = useMemo(
-    () => (data == undefined ? 0 : Math.max(...data.map((s) => s.high)) * 1.15),
+    () => (data == undefined ? 0 : Math.max(...data.map((s) => s.high)) * APP_CONSTANTS.max_price_percent),
     [data]
   );
   const totalDays = useMemo(
@@ -85,8 +82,17 @@ function App() {
     let sumDay = 0;
     let countDay = 0;
     for (const dayPrice of userDrawnPoints) {
-      const day = xPixelToDay(dayPrice.x, width, data.length + futureDays);
-      const price = yPixelToPrice(dayPrice.y, height, minPrice, maxPrice);
+      const day = xPixelToDay(
+        dayPrice.x,
+        APP_CONSTANTS.canvas_width,
+        data.length + futureDays
+      );
+      const price = yPixelToPrice(
+        dayPrice.y,
+        APP_CONSTANTS.canvas_height,
+        minPrice,
+        maxPrice
+      );
       if (lastDay === -1 || lastDay === day) {
         // First point or same day
         lastDay = day;
@@ -127,13 +133,20 @@ function App() {
   return (
     <>
       <div>
-        <div id="data">
+        <h1>Guess the stock price</h1>
+        <div
+          id="data"
+          style={{
+            width: APP_CONSTANTS.canvas_width,
+            height: APP_CONSTANTS.canvas_height,
+          }}
+        >
           {isPending ? (
             "Loading"
           ) : (
             <StockCanvas
-              width={width}
-              height={height}
+              width={APP_CONSTANTS.canvas_width}
+              height={APP_CONSTANTS.canvas_height}
               data={data}
               response={response}
               minPrice={minPrice}
@@ -157,6 +170,7 @@ function App() {
         </div>
         <div id="controls">
           <button
+            disabled={isFetching}
             onClick={() => {
               clear();
               refetch();
@@ -165,7 +179,7 @@ function App() {
             New
           </button>
           <button
-            disabled={response !== undefined}
+            disabled={isFetching || response !== undefined}
             onClick={() => submitSolution()}
           >
             Submit
@@ -175,16 +189,48 @@ function App() {
           {response == undefined ? (
             ""
           ) : (
-            <div>
-              <h2>
-                {response.name} ({response.symbol})
-                <span id="date">{response.stocks[0].date}</span>
-              </h2>
-              <div>Score: {response.score.total}</div>
-              <div>In direction: {response.score.inDirection}</div>
-              <div>In Low-High: {response.score.inLowHigh}</div>
-              <div>In Open-Close: {response.score.inOpenClose}</div>
-              <div>In Bollinger Band: {response.score.inBollinger}</div>
+            <div id="solution-with-data">
+              <div id="solution-with-data-details">
+                <h2>Details </h2>
+                <div className="caption-value">
+                  <span className="caption">Name:</span>
+                  <span className="value">{response.name.slice(0, 50)}</span>
+                </div>
+                <div className="caption-value">
+                  <span className="caption">Symbol:</span>
+                  <span className="value">{response.symbol}</span>
+                </div>
+                <div className="caption-value">
+                  <span className="caption">First Guessing Date:</span>
+                  <span className="value">
+                    {response.stocks[0].date.substring(0, 10)}
+                  </span>
+                </div>
+              </div>
+              <div id="solution-with-data-score">
+                <h2>Score</h2>
+                <div className="caption-value">
+                  <span className="caption">Total Score:</span>
+                  <span className="value">{response.score.total}</span>
+                </div>
+                <h2>Detail Score</h2>
+                <div className="caption-value">
+                  <span className="caption">In direction:</span>
+                  <span className="value">{response.score.inDirection}</span>
+                </div>
+                <div className="caption-value">
+                  <span className="caption">In Low-High:</span>
+                  <span className="value">{response.score.inLowHigh}</span>
+                </div>
+                <div className="caption-value">
+                  <span className="caption">In Open-Close:</span>
+                  <span className="value">{response.score.inOpenClose}</span>
+                </div>
+                <div className="caption-value">
+                  <span className="caption">In Bollinger Band:</span>
+                  <span className="value">{response.score.inBollinger}</span>
+                </div>
+              </div>
             </div>
           )}
         </div>
