@@ -12,6 +12,7 @@ import { xPixelToDay, yPixelToPrice } from "./logic/canvasLogic";
 import { User_stock_to_guess } from "./dynamicConstants";
 import { getApiUrl } from "./logic/apiLogics";
 import { APP_CONSTANTS } from "./model/app";
+import { LoadingCanvas } from "./LoadingCanvas";
 async function getStocks(): Promise<StockPublic[]> {
   const data = await fetch(`${getApiUrl()}/stocks`);
   return data.json();
@@ -57,11 +58,18 @@ function App() {
 
   // Find the min and max to determine the vertical space needed
   const minPrice = useMemo(
-    () => (data == undefined ? 0 : Math.min(...data.map((s) => s.low)) * APP_CONSTANTS.min_price_percent),
+    () =>
+      data == undefined
+        ? 0
+        : Math.min(...data.map((s) => s.low)) * APP_CONSTANTS.min_price_percent,
     [data]
   );
   const maxPrice = useMemo(
-    () => (data == undefined ? 0 : Math.max(...data.map((s) => s.high)) * APP_CONSTANTS.max_price_percent),
+    () =>
+      data == undefined
+        ? 0
+        : Math.max(...data.map((s) => s.high)) *
+          APP_CONSTANTS.max_price_percent,
     [data]
   );
   const totalDays = useMemo(
@@ -142,7 +150,10 @@ function App() {
           }}
         >
           {isPending ? (
-            "Loading"
+            <LoadingCanvas
+              width={APP_CONSTANTS.canvas_width}
+              height={APP_CONSTANTS.canvas_height}
+            />
           ) : (
             <StockCanvas
               width={APP_CONSTANTS.canvas_width}

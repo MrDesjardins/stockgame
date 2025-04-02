@@ -3,11 +3,13 @@ export interface AppConstants {
   canvas_height: number;
   min_price_percent: number;
   max_price_percent: number;
+  fps: number;
 }
 
 export const APP_CONSTANTS: AppConstants = {
   canvas_width: 800,
   canvas_height: 600,
-  min_price_percent: 0.80,
-  max_price_percent: 1.20,
+  min_price_percent: 0.8,
+  max_price_percent: 1.2,
+  fps: 60,
 };
