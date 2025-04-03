@@ -47,6 +47,7 @@ select count(*) from stocks;
 
 ## Backlog Top Priorities
 
+- [ ] Make the Loading Animation complete before unmounting the canvas
 - [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] New button should clean the UI and have some kind of waiting animation
 - [ ] Make the canvas more responsive (mobile friendly?)
@@ -83,3 +84,4 @@ select count(*) from stocks;
 - [x] Obfuscate the Stock to avoid people cheating (remove stock name and date on the initial load)
 - [x] Update to PostgreSQL to avoid DuckDB 1 connection limitation
 - [x] Animations are quick and should be configurable using the FPS mechanism. E.g. saying this should take 3 seconds to animate and we know we have a TARGET_FPS of 30 so it should take  90 frames to render the whole animation.
+- [x] Change the animation to have a single loop outside the StockCanvas and animation can hook into it

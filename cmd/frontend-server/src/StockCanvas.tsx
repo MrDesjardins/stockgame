@@ -5,8 +5,9 @@ import {
   priceToYPixel,
   yPixelToPrice,
 } from "./logic/canvasLogic";
-import { animate } from "./animate";
+import { animate, animationEngine } from "./animate";
 import { usePrefersColorScheme } from "./usePrefersColorScheme";
+import { APP_CONSTANTS } from "./model/app";
 
 export interface StockCanvasProps {
   data: StockPublic[];
@@ -24,58 +25,73 @@ export interface StockCanvasProps {
   numberDaysUserNeedToGuess: number;
 }
 
-const TARGET_FPS = 60;
 export function StockCanvas(props: StockCanvasProps) {
   const theme = usePrefersColorScheme();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number | null>(null);
+
   // Animation of the data candles
   const dataRef = useRef<StockPublic[]>([]);
   const responseDataRef = useRef<SolutionResponse | undefined>(undefined);
   const minPriceRef = useRef(props.minPrice);
   const maxPriceRef = useRef(props.maxPrice);
   const userDrawnPricesRef = useRef<{ x: number; y: number }[]>([]);
-  const maxFps = useRef(0);
-  const fps = useRef(0);
 
-  const animationQuestionRef = useRef(
-    animate(
-      1000,
-      props.data.length,
-      (frame: number, _timeFromBeginningMs: number) => {
-        // Draw the candles on the left-side first
-        // Draw only up to the animated candle count
-        const ctx = canvasRef.current?.getContext("2d");
-        if (ctx === null || ctx === undefined) {
-          return;
+  const animationEngineRef = useRef(
+    animationEngine(APP_CONSTANTS.fps, [
+      animate(
+        "Background",
+        (
+          frame: number,
+          timeFromBeginning: number,
+          fps: number,
+          maxFps: number
+        ) => {
+          const ctx = canvasRef.current?.getContext("2d");
+          if (ctx !== null && ctx !== undefined) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+            renderFPS(ctx, maxFps, fps);
+            renderFullChart(ctx);
+          }
         }
-
-        dataRef.current.slice(0, frame).forEach((stock, index) => {
-          renderSingleStock(ctx, stock, index);
-        });
-      }
-    )
-  );
-
-  const animationAnswerRef = useRef(
-    animate(
-      500,
-      props.response?.stocks.length ?? 0,
-      (frame: number, _timeFromBeginningMs: number) => {
-        const ctx = canvasRef.current?.getContext("2d");
-        if (ctx === null || ctx === undefined) {
-          return;
-        }
-        if (responseDataRef.current !== undefined) {
+      ),
+      animate(
+        "StockSingleStocks",
+        (frame: number, _timeFromBeginningMs: number) => {
+          // Draw the candles on the left-side first
           // Draw only up to the animated candle count
-          responseDataRef.current.stocks
-            .slice(0, frame)
-            .forEach((stock, index) => {
-              renderSingleStock(ctx, stock, dataRef.current.length + index);
-            });
-        }
-      }
-    )
+          const ctx = canvasRef.current?.getContext("2d");
+          if (ctx === null || ctx === undefined) {
+            return;
+          }
+
+          dataRef.current.slice(0, frame).forEach((stock, index) => {
+            renderSingleStock(ctx, stock, index);
+          });
+        },
+        1000,
+        props.data.length
+      ),
+      animate(
+        "StockResponsesStocks",
+        (frame: number, _timeFromBeginningMs: number) => {
+          const ctx = canvasRef.current?.getContext("2d");
+          if (ctx === null || ctx === undefined) {
+            return;
+          }
+          if (responseDataRef.current !== undefined) {
+            // Draw only up to the animated candle count
+            responseDataRef.current.stocks
+              .slice(0, frame)
+              .forEach((stock, index) => {
+                renderSingleStock(ctx, stock, dataRef.current.length + index);
+              });
+          }
+        },
+        500,
+        props.response?.stocks.length ?? 0
+      ),
+    ])
   );
 
   const animatedResponseLastId = useRef(0);
@@ -98,8 +114,9 @@ export function StockCanvas(props: StockCanvasProps) {
       return;
     }
     // Reset animation state and start
-    animationQuestionRef.current.start();
-    animationAnswerRef.current.reset(0); // Reset by removing the answer data
+    animationEngineRef.current.start("StockSingleStocks");
+    animationEngineRef.current.reset("StockResponsesStocks", 0);
+
     responseDataRef.current = undefined;
     // Set the data into a ref for the animation loop
     dataRef.current = props.data;
@@ -114,8 +131,12 @@ export function StockCanvas(props: StockCanvasProps) {
     ) {
       responseDataRef.current = props.response;
       animatedResponseLastId.current = props.responseCounter;
-      animationAnswerRef.current.reset(props.response?.stocks.length ?? 0);
-      animationAnswerRef.current.start();
+
+      animationEngineRef.current.reset(
+        "StockResponsesStocks",
+        props.response?.stocks.length ?? 0
+      );
+      animationEngineRef.current.start("StockResponsesStocks");
     }
   }, [props.response, props.responseCounter]);
 
@@ -129,45 +150,7 @@ export function StockCanvas(props: StockCanvasProps) {
   }, [props.minPrice, props.maxPrice]);
   // Animation effect
   useEffect(() => {
-    let frameCount = 0;
-    let frameRenderedCount = 0;
-    let fpsStartTime = performance.now();
-
-    const animate = (timestamp: number) => {
-      frameCount++;
-      if (timestamp - fpsStartTime >= 1000) {
-        maxFps.current = frameCount;
-        fps.current = frameRenderedCount;
-        frameCount = 0;
-        frameRenderedCount = 0;
-        fpsStartTime = timestamp;
-      }
-
-      const ctx = canvasRef.current?.getContext("2d");
-      if (
-        ctx !== null &&
-        ctx !== undefined &&
-        frameCount % Math.floor(maxFps.current / TARGET_FPS) === 0
-      ) {
-        frameRenderedCount++;
-        // Reset the canvas
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-        renderFPS(ctx, maxFps.current, fps.current);
-        renderFullChart(ctx);
-        animationAnswerRef.current.tick(timestamp);
-        animationQuestionRef.current.tick(timestamp);
-      }
-      animationFrameRef.current = requestAnimationFrame(animate);
-    };
-
-    animationFrameRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
+    animationEngineRef.current.startAll();
   }, []);
   const renderFPS = (
     ctx: CanvasRenderingContext2D,
