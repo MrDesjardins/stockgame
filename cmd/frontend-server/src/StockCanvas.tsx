@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useRef, useEffect } from "react";
 import { SolutionResponse, StockPublic } from "./model/stock";
 import {
   candelPixelWidth,
@@ -17,7 +17,6 @@ export interface StockCanvasProps {
   totalDays: number;
   width: number;
   height: number;
-  futureDays: number;
   userDrawnPrices: { x: number; y: number }[];
   addUserDrawnPrice: (x: number, y: number) => void;
   clearUserDrawnPrices: () => void;
@@ -70,7 +69,7 @@ export function StockCanvas(props: StockCanvasProps) {
           });
         },
         1000,
-        props.data.length
+        () => dataRef.current.length
       ),
       animate(
         "StockResponsesStocks",
@@ -89,23 +88,21 @@ export function StockCanvas(props: StockCanvasProps) {
           }
         },
         500,
-        props.response?.stocks.length ?? 0
+        () => responseDataRef.current?.stocks.length ?? 0
       ),
     ])
   );
 
-  const animatedResponseLastId = useRef(0);
-  const candleWidth = useMemo(() => {
-    return candelPixelWidth(props.width, props.totalDays);
+  const responseChangedCounterId = useRef(0);
+  const candleWidth = useRef(0);
+  useEffect(() => {
+    candleWidth.current = candelPixelWidth(props.width, props.totalDays);
   }, [props.width, props.totalDays]);
 
   // Give the most left side of the candle
-  const stockIndexToX = useCallback(
-    (dayIndex: number): number => {
-      return dayIndex * candleWidth;
-    },
-    [candleWidth]
-  );
+  const stockIndexToX = (dayIndex: number): number => {
+    return dayIndex * candleWidth.current;
+  };
 
   // New data
   useEffect(() => {
@@ -115,7 +112,7 @@ export function StockCanvas(props: StockCanvasProps) {
     }
     // Reset animation state and start
     animationEngineRef.current.start("StockSingleStocks");
-    animationEngineRef.current.reset("StockResponsesStocks", 0);
+    animationEngineRef.current.reset("StockResponsesStocks");
 
     responseDataRef.current = undefined;
     // Set the data into a ref for the animation loop
@@ -127,15 +124,12 @@ export function StockCanvas(props: StockCanvasProps) {
 
     if (
       props.responseCounter > 0 &&
-      props.responseCounter !== animatedResponseLastId.current
+      props.responseCounter !== responseChangedCounterId.current
     ) {
       responseDataRef.current = props.response;
-      animatedResponseLastId.current = props.responseCounter;
+      responseChangedCounterId.current = props.responseCounter;
 
-      animationEngineRef.current.reset(
-        "StockResponsesStocks",
-        props.response?.stocks.length ?? 0
-      );
+      animationEngineRef.current.reset("StockResponsesStocks");
       animationEngineRef.current.start("StockResponsesStocks");
     }
   }, [props.response, props.responseCounter]);
@@ -188,6 +182,8 @@ export function StockCanvas(props: StockCanvasProps) {
       ctx.fillStyle = theme === "dark" ? "white" : "black";
       const yText = y - 4;
       ctx.fillText(`$${price.toFixed(2)}`, 2, yText);
+
+      // The right side price
       if (i < props.numberDaysUserNeedToGuess) {
         const priceStr = price.toFixed(2);
         ctx.fillText(
@@ -199,13 +195,15 @@ export function StockCanvas(props: StockCanvasProps) {
     }
 
     // Vertical lines
-    for (let i = 0; i < props.futureDays; i++) {
-      const x = dataRef.current.length * candleWidth + i * candleWidth;
+    for (let i = 0; i < props.numberDaysUserNeedToGuess; i++) {
+      const x =
+        dataRef.current.length * candleWidth.current + i * candleWidth.current;
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
       ctx.stroke();
       // Text of the days to guess (+1, +2, ...)
+      ctx.font = "10px Arial";
       ctx.fillText(`+${i + 1}`, x - 2, height - 2);
     }
   };
@@ -215,7 +213,7 @@ export function StockCanvas(props: StockCanvasProps) {
       ctx.beginPath();
       ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
       ctx.fillStyle = `rgba(192, 192, 192, ${
-        responseDataRef.current?.stocks ? 0.2 : 1
+        responseDataRef.current?.stocks ? 0.5 : 1
       })`;
       ctx.fill();
     }
@@ -228,6 +226,7 @@ export function StockCanvas(props: StockCanvasProps) {
     );
     const volumeHeight = ctx.canvas.height / 4;
     const padding = 2;
+
     for (let i = 0; i < dataRef.current.length; i++) {
       const stock = dataRef.current[i];
       const x = stockIndexToX(i);
@@ -236,7 +235,7 @@ export function StockCanvas(props: StockCanvasProps) {
       ctx.fillRect(
         x + padding,
         ctx.canvas.height - y,
-        candleWidth - 2 * padding,
+        candleWidth.current - 2 * padding,
         y
       );
     }
@@ -278,22 +277,22 @@ export function StockCanvas(props: StockCanvasProps) {
 
     // Draw the candle high and low
     ctx.beginPath();
-    ctx.moveTo(x + candleWidth / 2, highY);
-    ctx.lineTo(x + candleWidth / 2, lowY);
+    ctx.moveTo(x + candleWidth.current / 2, highY);
+    ctx.lineTo(x + candleWidth.current / 2, lowY);
     ctx.stroke();
 
     // Draw the candle body
     ctx.fillRect(
       x,
       Math.min(openY, closeY),
-      candleWidth * 0.8,
+      candleWidth.current * 0.8,
       Math.abs(closeY - openY)
     );
     // Draw the candle border
     ctx.strokeRect(
       x,
       Math.min(openY, closeY),
-      candleWidth * 0.8,
+      candleWidth.current * 0.8,
       Math.abs(closeY - openY)
     );
   };
@@ -331,7 +330,7 @@ export function StockCanvas(props: StockCanvasProps) {
         maxPriceRef.current
       );
       x = stockIndexToX(dataRef.current.length - 1 + i);
-      ctx.lineTo(x + candleWidth / 2, y);
+      ctx.lineTo(x + candleWidth.current / 2, y);
     }
     ctx.stroke();
     ctx.strokeStyle = "red";
@@ -358,7 +357,7 @@ export function StockCanvas(props: StockCanvasProps) {
         maxPriceRef.current
       );
       x = stockIndexToX(dataRef.current.length - 1 + i);
-      ctx.lineTo(x + candleWidth / 2, y);
+      ctx.lineTo(x + candleWidth.current / 2, y);
     }
     ctx.stroke();
   };
@@ -367,9 +366,9 @@ export function StockCanvas(props: StockCanvasProps) {
     // Draw the area the user can predict the price (the user can draw, we make the background light gray)
     ctx.fillStyle = theme === "dark" ? "#3b3b3b" : "#F0F0F0";
     ctx.fillRect(
-      dataRef.current.length * candleWidth,
+      dataRef.current.length * candleWidth.current,
       0,
-      props.futureDays * candleWidth,
+      props.numberDaysUserNeedToGuess * candleWidth.current,
       ctx.canvas.height
     );
 
@@ -428,7 +427,7 @@ export function StockCanvas(props: StockCanvasProps) {
     const x = xClick - rect.left;
     const y = yClick - rect.top;
     if (
-      x < stockIndexToX(dataRef.current.length - 1) + candleWidth ||
+      x < stockIndexToX(dataRef.current.length - 1) + candleWidth.current ||
       x > canvas.width
     ) {
       return;

@@ -47,7 +47,6 @@ select count(*) from stocks;
 
 ## Backlog Top Priorities
 
-- [ ] Make the Loading Animation complete before unmounting the canvas
 - [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] New button should clean the UI and have some kind of waiting animation
 - [ ] Make the canvas more responsive (mobile friendly?)
@@ -55,6 +54,7 @@ select count(*) from stocks;
 
 ## Backlog Lower Priorities
 
+- [ ] Make the Loading Animation complete before unmounting the canvas
 - [ ] Animate the score into the canvas making it more "game" like
 - [ ] Make sure the user sent 10 days of prices on the submission
 - [ ] Avoid rendering the Canvas HTML over and over again. Should have it once and then just update the canvas

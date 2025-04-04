@@ -6,6 +6,12 @@
   margin: 0 auto; /*Horizontally centered*/
 }
 
+.app-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 #controls {
   margin-top: 20px;
   margin-bottom: 20px;
@@ -15,6 +21,10 @@
 
 #controls > button {
   margin-right: 10px;
+}
+
+button.active {
+  background-color: #f9e981;
 }
 
 #solution-with-data {
@@ -54,14 +64,23 @@
   gap: 20px;
 }
 
-@media (max-width: 800px) {
-  #solution-with-data {
-    flex-direction: column;
-    align-items: center;
-    margin: 5px;
-  }
+/* Replace the media query with a class that can be toggled by JS */
+.narrow #solution-with-data {
+  flex-direction: column;
+  align-items: center;
+  margin: 5px;
+  width: var(--canvas-width);
+}
 
-  #solution-with-data > div {
-    width: 100%;
-  }
+.narrow #solution-with-data > div {
+  width: 100%;
+}
+h1 {
+  margin: 10px 0;
+}
+
+#instruction {
+  margin: 10px 0;
+  max-width: 600px;
+  text-align: center;
 }

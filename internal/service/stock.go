@@ -7,7 +7,8 @@ import (
 )
 
 func GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
-	for numberOfTry := 0; numberOfTry < 10; numberOfTry++ {
+OuterLoop:
+	for numberOfTry := 0; numberOfTry < 15; numberOfTry++ {
 		stocks := GetRandomStockFromPersistence()
 
 		// Check if there is activity (volume) for the days of the stock
@@ -27,6 +28,12 @@ func GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
 
 		if len(stocks) < numberOfDays {
 			continue // Try again
+		}
+		// Check if some stock in the slice has an open price to zero
+		for _, stock := range stocks {
+			if stock.Open == 0 {
+				continue OuterLoop // Try again
+			}
 		}
 		index := rand.IntN(len(stocks) - numberOfDays)
 		return stocks[index : index+numberOfDays] // Found a good candidate

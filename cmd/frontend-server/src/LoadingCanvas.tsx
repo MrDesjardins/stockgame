@@ -15,7 +15,7 @@ export function LoadingCanvas(props: LoadingCanvasProps) {
     animationEngine(APP_CONSTANTS.fps, [
       animate(
         "LoadingAnimation",
-        (frame: number, timeFromBeginningMs: number) => {
+        (frame: number, _timeFromBeginningMs: number) => {
           //console.log("LoadingAnimation", frame, timeFromBeginningMs);
           // Draw the candles on the left-side first
           // Draw only up to the animated candle count
@@ -26,7 +26,7 @@ export function LoadingCanvas(props: LoadingCanvasProps) {
           renderLoadingText(ctx, frame, text);
         },
         2000,
-        text.length,
+        () => text.length,
         true
       ),
     ])

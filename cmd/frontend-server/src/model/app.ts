@@ -7,7 +7,7 @@ export interface AppConstants {
 }
 
 export const APP_CONSTANTS: AppConstants = {
-  canvas_width: 800,
+  canvas_width: 1000,
   canvas_height: 600,
   min_price_percent: 0.8,
   max_price_percent: 1.2,

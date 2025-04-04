@@ -1,3 +1,12 @@
+/**
+ * Represent a single animation
+ * @param id - A unique name to identify the animation. Useful during debugging.
+ * @param animation - The function to be called for each frame of the animation.
+ * @param animationExpectedDuration  - The time between frame
+ * @param totalAnimationFramesInitial - The total number of frames for the animation before stopping. Undefined mean infinite animation.
+ * @param autoReset - When true, the animation will reset when it reaches the end. When false, the animation will stop at the end.
+ * @returns - An object with commands
+ */
 export function animate(
   id: string,
   animation: (
@@ -7,33 +16,24 @@ export function animate(
     maxFps: number
   ) => void,
   animationExpectedDuration?: number,
-  totalAnimationFramesInitial?: number,
+  totalAnimationFramesInitial?: () => number,
   autoReset?: boolean
 ) {
   let startTime = 0;
   let animationFrameDone = 0;
-  let timePerFrame = 0;
-  let totalAnimationFrames = totalAnimationFramesInitial;
+
   let isDone = false;
   const isAutoReset = autoReset ?? false;
   return {
-    reset: (totalAnimationFramesInitial: number) => {
+    reset: () => {
       animationFrameDone = 0;
       startTime = 0;
-      isDone = false;
-      timePerFrame = 0;
-      totalAnimationFrames = totalAnimationFramesInitial;
+      isDone = true;
     },
     start: () => {
       startTime = performance.now();
       isDone = false;
       animationFrameDone = 0;
-      if (
-        animationExpectedDuration !== undefined &&
-        totalAnimationFrames !== undefined
-      ) {
-        timePerFrame = animationExpectedDuration / totalAnimationFrames;
-      }
     },
     tick: (timestamp: number, fps: number, maxFps: number) => {
       if (startTime === 0) {
@@ -42,10 +42,9 @@ export function animate(
       const elapsedTime = timestamp - startTime;
       if (
         !isDone &&
-        totalAnimationFrames !== undefined &&
-        animationFrameDone >= totalAnimationFrames
+        totalAnimationFramesInitial !== undefined &&
+        animationFrameDone >= totalAnimationFramesInitial()
       ) {
-        console.log(id, "Ended at after", elapsedTime, "ms");
         if (isAutoReset) {
           animationFrameDone = 0;
           startTime = timestamp;
@@ -55,14 +54,23 @@ export function animate(
         }
       }
       animation(animationFrameDone, elapsedTime, fps, maxFps);
-      if (
-        !isDone &&
-        (totalAnimationFrames === undefined ||
-          (totalAnimationFrames !== undefined &&
-            animationFrameDone < totalAnimationFrames &&
-            elapsedTime >= timePerFrame * animationFrameDone))
-      ) {
-        animationFrameDone++;
+      if (!isDone) {
+        let timePerFrame = 0;
+        if (
+          animationExpectedDuration !== undefined &&
+          totalAnimationFramesInitial !== undefined
+        ) {
+          timePerFrame =
+            animationExpectedDuration / totalAnimationFramesInitial();
+        }
+        if (
+          totalAnimationFramesInitial === undefined ||
+          (totalAnimationFramesInitial !== undefined &&
+            animationFrameDone < totalAnimationFramesInitial() &&
+            elapsedTime >= timePerFrame * animationFrameDone)
+        ) {
+          animationFrameDone++;
+        }
       }
 
       return true;
@@ -76,6 +84,13 @@ export function animate(
   };
 }
 
+/**
+ * The engine is the single loop for all animations. It controls the frame per second and ensure that the target fps is
+ * respected before calling individual animations.
+ * @param target_fps - The number of time we repaint the canvas per second
+ * @param initAnimations - The list of animation to run every frame.
+ * @returns - Commands on the engine
+ */
 export function animationEngine(
   target_fps: number,
   initAnimations?: ReturnType<typeof animate>[]
@@ -128,10 +143,10 @@ export function animationEngine(
         animation.start();
       }
     },
-    reset: (animationId: string, value: number) => {
+    reset: (animationId: string) => {
       const animation = animations.find((a) => a.getId() === animationId);
       if (animation) {
-        animation.reset(value);
+        animation.reset();
       }
     },
     stopAll: () => {
