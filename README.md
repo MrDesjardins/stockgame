@@ -50,10 +50,11 @@ select count(*) from stocks;
 - [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] New button should clean the UI and have some kind of waiting animation
 - [ ] Make the canvas more responsive (mobile friendly?)
-- [ ] Make the canvas draw with touch (mobile support?)
 
 ## Backlog Lower Priorities
 
+- [ ] Preload the next set of data to avoid waiting time
+- [ ] Bounce for the resize event
 - [ ] Make the Loading Animation complete before unmounting the canvas
 - [ ] Animate the score into the canvas making it more "game" like
 - [ ] Make sure the user sent 10 days of prices on the submission
@@ -85,3 +86,4 @@ select count(*) from stocks;
 - [x] Update to PostgreSQL to avoid DuckDB 1 connection limitation
 - [x] Animations are quick and should be configurable using the FPS mechanism. E.g. saying this should take 3 seconds to animate and we know we have a TARGET_FPS of 30 so it should take  90 frames to render the whole animation.
 - [x] Change the animation to have a single loop outside the StockCanvas and animation can hook into it
+- [x] Make the canvas draw with touch (mobile support?)
