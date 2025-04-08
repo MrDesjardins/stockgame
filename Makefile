@@ -3,6 +3,7 @@
 .PHONY: api 
 .PHONY: init 
 .PHONY: unit-test 
+.PHONY: unit-test-watch 
 .PHONY: unit-test-coverage
 .PHONY: db
 .PHONY: release
@@ -27,7 +28,11 @@ init:
 	go run cmd/data-loader/main.go
 
 unit-test: 
-	go test -parallel 1 ./... 
+#	go test ./... 
+	gotestsum --format testname
+
+unit-test-watch: 
+	gotestsum --format testname --watch
 
 unit-test-coverage:
 	go test ./... -coverpkg=./... -coverprofile=./coverage/coverage.out || true

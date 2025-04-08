@@ -6,27 +6,44 @@ import (
 	"stockgame/internal/model"
 )
 
-func GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
+type StockService interface {
+	GetStockInfo(symbolUUID string) model.StockInfo
+	GetStocksBeforeEqualDate(symbol, date string) []model.Stock
+	GetStocksAfterDate(symbol, date string) []model.Stock
+	GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock
+	GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic
+	GetRandomStockFromPersistence() []model.StockPublic
+	GetRandomStock(symbol []string) string
+}
+type StockServiceImpl struct {
+	StockDataAccess                           dataaccess.StockDataAccess
+	GetRandomStockSelectorFunc                func(choices []string) string
+	GetRandomStockFromPersistenceSelectorFunc func() []model.StockPublic
+}
+
+func (s *StockServiceImpl) GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
 OuterLoop:
 	for numberOfTry := 0; numberOfTry < 15; numberOfTry++ {
-		stocks := GetRandomStockFromPersistence()
-
+		var stocks []model.StockPublic
+		if s.GetRandomStockFromPersistenceSelectorFunc != nil {
+			stocks = s.GetRandomStockFromPersistenceSelectorFunc()
+		} else {
+			stocks = s.GetRandomStockFromPersistence()
+		}
 		// Check if there is activity (volume) for the days of the stock
 		volume := 0
 		for _, stock := range stocks {
-
 			volume += stock.Volume
 		}
 		if len(stocks) == 0 {
 			continue // Try again
 		}
 		volumeAverage := volume / len(stocks)
-		println("Volume average: ", volumeAverage)
 		if volumeAverage < 25000 {
 			continue // Try again
 		}
-
-		if len(stocks) < numberOfDays {
+		upperBound := len(stocks) - numberOfDays
+		if upperBound <= 0 {
 			continue // Try again
 		}
 		// Check if some stock in the slice has an open price to zero
@@ -35,38 +52,44 @@ OuterLoop:
 				continue OuterLoop // Try again
 			}
 		}
-		index := rand.IntN(len(stocks) - numberOfDays)
-		return stocks[index : index+numberOfDays] // Found a good candidate
+		lowerBound := rand.IntN(upperBound)
+		return stocks[lowerBound : lowerBound+numberOfDays] // Found a good candidate
 	}
 	return []model.StockPublic{}
 }
 
-func GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
-	stocks := dataaccess.GetPricesForStockInTimeRange(symbol, startDate, endDate)
+func (s *StockServiceImpl) GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
+	stocks := s.StockDataAccess.GetPricesForStockInTimeRange(symbol, startDate, endDate)
 	return stocks
 }
-
-func GetStockBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
-	stocks := dataaccess.GetStocksBeforeEqualDate(symbol, beforeDate)
+func (s *StockServiceImpl) GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
+	stocks := s.StockDataAccess.GetStocksBeforeEqualDate(symbol, beforeDate)
 	return stocks
 }
-func GetStockInfo(symbolUUID string) model.StockInfo {
-	stock := dataaccess.GetStockInfo(symbolUUID)
+func (s *StockServiceImpl) GetStockInfo(symbolUUID string) model.StockInfo {
+	stock := s.StockDataAccess.GetStockInfo(symbolUUID)
 	return stock
 }
-func GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
-	stocks := dataaccess.GetStocksAfterDate(symbolUUID, afterDate)
+func (s *StockServiceImpl) GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
+	stocks := s.StockDataAccess.GetStocksAfterDate(symbolUUID, afterDate)
 	return stocks
 }
 
-func GetRandomStockFromPersistence() []model.StockPublic {
-	syms := dataaccess.GetUniqueStockSymbols()
-	symbol := GetRandomStock(syms)
-	stocks := dataaccess.GetPricesForStock(symbol)
+func (s *StockServiceImpl) GetRandomStockFromPersistence() []model.StockPublic {
+	syms := s.StockDataAccess.GetUniqueStockSymbols()
+
+	var symbol string
+	if s.GetRandomStockSelectorFunc != nil {
+		symbol = s.GetRandomStockSelectorFunc(syms)
+	} else {
+		symbol = s.GetRandomStock(syms) // fallback to actual implementation
+	}
+
+	stocks := s.StockDataAccess.GetPricesForStock(symbol)
 	return stocks
 }
 
-func GetRandomStock(symbol []string) string {
+func (s *StockServiceImpl) GetRandomStock(symbol []string) string {
 	index := rand.IntN(len(symbol))
 	return symbol[index]
 }

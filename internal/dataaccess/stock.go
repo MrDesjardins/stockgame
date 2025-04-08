@@ -6,7 +6,19 @@ import (
 	"stockgame/internal/model"
 )
 
-func GetPricesForStock(symbol string) []model.StockPublic {
+type StockDataAccess interface {
+	GetPricesForStock(symbol string) []model.StockPublic
+	GetUniqueStockSymbols() []string
+	GetPricesForStockInTimeRange(symbol string, startDate string, endDate string) []model.Stock
+	GetStocksAfterDate(symbol string, afterDate string) []model.Stock
+	GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock
+	GetStockInfo(symbolUUID string) model.StockInfo
+}
+type StockDataAccessImpl struct {
+	StockDataAccess
+}
+
+func (s *StockDataAccessImpl) GetPricesForStock(symbol string) []model.StockPublic {
 	db := database.GetDB()
 	query := `
 		SELECT stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume, stocks_info.symbol_uuid
@@ -37,7 +49,7 @@ func GetPricesForStock(symbol string) []model.StockPublic {
 	return stocks
 }
 
-func GetUniqueStockSymbols() []string {
+func (s *StockDataAccessImpl) GetUniqueStockSymbols() []string {
 	db := database.GetDB()
 	query := `
 		SELECT DISTINCT(symbol)
@@ -61,7 +73,7 @@ func GetUniqueStockSymbols() []string {
 	return symbols
 }
 
-func GetPricesForStockInTimeRange(symbol string, startDate string, endDate string) []model.Stock {
+func (s *StockDataAccessImpl) GetPricesForStockInTimeRange(symbol string, startDate string, endDate string) []model.Stock {
 	db := database.GetDB()
 	query := `
 		SELECT stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
@@ -92,7 +104,7 @@ func GetPricesForStockInTimeRange(symbol string, startDate string, endDate strin
 	return stocks
 }
 
-func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
+func (s *StockDataAccessImpl) GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
 	db := database.GetDB()
 	query := `
 		SELECT stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
@@ -123,7 +135,7 @@ func GetStocksAfterDate(symbol string, afterDate string) []model.Stock {
 	return stocks
 }
 
-func GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
+func (s *StockDataAccessImpl) GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
 	db := database.GetDB()
 	query := `
 		SELECT  stocks.symbol, stocks.date, stocks.open, stocks.high, stocks.low, stocks.close, stocks.adj_close, stocks.volume
@@ -154,7 +166,7 @@ func GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
 	return stocks
 }
 
-func GetStockInfo(symbolUUID string) model.StockInfo {
+func (s *StockDataAccessImpl) GetStockInfo(symbolUUID string) model.StockInfo {
 	db := database.GetDB()
 	query := `
 		SELECT symbol, name, symbol_uuid

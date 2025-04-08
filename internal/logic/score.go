@@ -5,9 +5,16 @@ import (
 	"stockgame/internal/model"
 )
 
-func GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollinger20Days map[string]model.BollingerBand) model.UserScoreResponse {
-	println("userPrices: ", len(userPrices))
-	println("actualStockInfo: ", len(actualStockInfo))
+type ScoringLogic interface {
+	CalculateBollingerBands(stockInfo []model.Stock, day int) map[string]model.BollingerBand
+	GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollinger20Days map[string]model.BollingerBand) model.UserScoreResponse
+}
+
+type ScoringLogicImpl struct {
+	ScoringLogic
+}
+
+func (h *ScoringLogicImpl) GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollinger20Days map[string]model.BollingerBand) model.UserScoreResponse {
 	scoreObj := model.UserScoreResponse{
 		Total:       0,
 		InLowHigh:   0,
@@ -43,7 +50,6 @@ func GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollin
 				scoreObj.InBollinger += 5
 			}
 		}
-
 	}
 
 	// Small bonus if the user was in the right direction
@@ -56,7 +62,7 @@ func GetScore(userPrices []model.DayPrice, actualStockInfo []model.Stock, bollin
 	return scoreObj
 }
 
-func CalculateBollingerBands(stockInfo []model.Stock, day int) map[string]model.BollingerBand {
+func (h *ScoringLogicImpl) CalculateBollingerBands(stockInfo []model.Stock, day int) map[string]model.BollingerBand {
 	if len(stockInfo) < day {
 		return map[string]model.BollingerBand{} // Return empty map if not enough data
 	}
