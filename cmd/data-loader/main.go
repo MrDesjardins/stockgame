@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "modernc.org/sqlite"
 )
 
 var maxWorkers = runtime.NumCPU() * 2 // Double the CPU cores

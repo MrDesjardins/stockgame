@@ -17,6 +17,6 @@ func TestGetStock(t *testing.T) {
 	EXPECTED := 1000
 	stock := mockService.GetUniqueStockSymbols()
 	if len(stock) < EXPECTED {
-		t.Errorf("Expected at last %d", EXPECTED)
+		t.Errorf("Expected atleast %d and not %d", EXPECTED, len(stock))
 	}
 }

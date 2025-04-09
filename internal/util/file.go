@@ -3,9 +3,6 @@ package util
 import (
 	"path/filepath"
 	"runtime"
-
-	_ "github.com/marcboeker/go-duckdb" // DuckDB driver
-	_ "modernc.org/sqlite"
 )
 
 // GetProjectRoot returns the absolute path to the project root directory
