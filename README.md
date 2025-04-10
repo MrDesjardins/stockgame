@@ -17,7 +17,11 @@ sudo apt-get update
 sudo apt install postgresql
 ```
 
-Ensure you have Docker installed (for example on Windows) then it will be accessible using WSL2.
+Ensure you have Docker installed (for example on Windows) then it will be accessible using WSL2. You can start the database using:
+
+```sh
+make db
+```
 
 ### Data
 

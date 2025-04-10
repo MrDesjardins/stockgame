@@ -40,7 +40,7 @@ unit-test-coverage:
 	go tool cover -html=./coverage/coverage.out -o=./coverage/coverage.html
 
 db:
-	duckdb data/db/stockgame.duckdb
+	docker-compose -f docker-compose.yml up -d
 
 container-debug:
 	docker exec -it stock_postgres bash 
