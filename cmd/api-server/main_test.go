@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"stockgame/internal/model"
@@ -28,9 +29,11 @@ func (m *StockServiceMockImpl) GetRandomStock(symbol []string) string {
 	args := m.Called()
 	return args.Get(0).(string)
 }
-func (m *StockServiceMockImpl) GetStockInfo(symbolUUID string) model.StockInfo {
+func (m *StockServiceMockImpl) GetStockInfo(symbolUUID string) (model.StockInfo, error) {
 	args := m.Called(symbolUUID)
-	return args.Get(0).(model.StockInfo)
+	stockInfo := args.Get(0).(model.StockInfo)
+	err := args.Error(1)
+	return stockInfo, err
 }
 func (m *StockServiceMockImpl) GetStocksAfterDate(symbol, date string) []model.Stock {
 	args := m.Called(symbol, date)
@@ -169,6 +172,34 @@ func TestApiServerRequestPostSolution(t *testing.T) {
 		responseBody := w.Body.String()
 		assert.Contains(t, responseBody, "symbolUUID and afterDate are required query parameters")
 	})
+	t.Run(("No Information for the Company"), func(t *testing.T) {
+		// Arrange
+		mockService := new(StockServiceMockImpl)
+		mockScoringLogic := new(ScoringLogicMockImpl)
+		handler := &SolutionHandler{
+			StockService: mockService,
+			ScoringLogic: mockScoringLogic,
+		}
+		mockService.On("GetStockInfo", "AAPL").Return(model.StockInfo{}, errors.New("Cannot find the stock information"))
+		body := `{"symbolUUID": "AAPL", "afterDate": "2023-10-01", "estimatedDayPrices": []}`
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		bodyIoReader := strings.NewReader(body)
+
+		router := SetupRouter(handler)
+
+		req, _ := http.NewRequest(http.MethodPost, "/solution", bodyIoReader)
+		c.Request = req
+		c.Request.Header.Set("Content-Type", "application/json")
+
+		// Act
+		router.ServeHTTP(w, req)
+
+		// Assert
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		responseBody := w.Body.String()
+		assert.Contains(t, responseBody, "Cannot find the stock information")
+	})
 	t.Run(("Missing afterDate"), func(t *testing.T) {
 		// Arrange
 		mockService := new(StockServiceMockImpl)
@@ -202,7 +233,7 @@ func TestApiServerRequestPostSolution(t *testing.T) {
 		mockService.On("GetStockInfo", "AAPL").Return(model.StockInfo{
 			Symbol: "AAPL",
 			Name:   "Apple Inc.",
-		})
+		}, nil)
 		mockService.On("GetStocksBeforeEqualDate", "AAPL", "2023-10-01").Return([]model.Stock{
 			{
 				Symbol:   "AAPL",

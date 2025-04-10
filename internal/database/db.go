@@ -8,6 +8,10 @@ import (
 
 var db *sql.DB
 
+type DBInterface interface {
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+}
+
 // Connect to DB
 func ConnectDB() {
 	var err error

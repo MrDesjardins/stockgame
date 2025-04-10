@@ -7,7 +7,7 @@ import (
 )
 
 type StockService interface {
-	GetStockInfo(symbolUUID string) model.StockInfo
+	GetStockInfo(symbolUUID string) (model.StockInfo, error)
 	GetStocksBeforeEqualDate(symbol, date string) []model.Stock
 	GetStocksAfterDate(symbol, date string) []model.Stock
 	GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock
@@ -66,9 +66,9 @@ func (s *StockServiceImpl) GetStocksBeforeEqualDate(symbol string, beforeDate st
 	stocks := s.StockDataAccess.GetStocksBeforeEqualDate(symbol, beforeDate)
 	return stocks
 }
-func (s *StockServiceImpl) GetStockInfo(symbolUUID string) model.StockInfo {
-	stock := s.StockDataAccess.GetStockInfo(symbolUUID)
-	return stock
+func (s *StockServiceImpl) GetStockInfo(symbolUUID string) (model.StockInfo, error) {
+	stock, err := s.StockDataAccess.GetStockInfo(symbolUUID)
+	return stock, err
 }
 func (s *StockServiceImpl) GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
 	stocks := s.StockDataAccess.GetStocksAfterDate(symbolUUID, afterDate)

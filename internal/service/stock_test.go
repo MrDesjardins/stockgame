@@ -26,7 +26,7 @@ type StockDataAccessMockImpl struct {
 	GetPricesForStockInTimeRangeFunc func(symbol, startDate, endDate string) []model.Stock
 	GetStocksAfterDateFunc           func(symbol, afterDate string) []model.Stock
 	GetStocksBeforeEqualDateFunc     func(symbol, beforeDate string) []model.Stock
-	GetStockInfoFunc                 func(symbolUUID string) model.StockInfo
+	GetStockInfoFunc                 func(symbolUUID string) (model.StockInfo, error)
 }
 
 func (s *StockDataAccessMockImpl) GetPricesForStock(symbol string) []model.StockPublic {
@@ -65,11 +65,11 @@ func (s *StockDataAccessMockImpl) GetStocksBeforeEqualDate(symbol, beforeDate st
 	return nil
 }
 
-func (s *StockDataAccessMockImpl) GetStockInfo(symbolUUID string) model.StockInfo {
+func (s *StockDataAccessMockImpl) GetStockInfo(symbolUUID string) (model.StockInfo, error) {
 	if s.GetStockInfoFunc != nil {
 		return s.GetStockInfoFunc(symbolUUID)
 	}
-	return model.StockInfo{}
+	return model.StockInfo{}, nil
 }
 
 func TestGetRandomStockFromPersistence(t *testing.T) {

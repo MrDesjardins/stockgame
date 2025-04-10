@@ -43,7 +43,11 @@ func (h *SolutionHandler) postSolution(c *gin.Context) {
 		return
 	}
 
-	real := h.StockService.GetStockInfo(symbolUUID)
+	real, err := h.StockService.GetStockInfo(symbolUUID)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Cannot find the stock information"})
+		return
+	}
 	realStocksBeforeDate := h.StockService.GetStocksBeforeEqualDate(real.Symbol, afterDate)
 	realStocksAfterDate := h.StockService.GetStocksAfterDate(real.Symbol, afterDate)
 	fullList := append(realStocksBeforeDate, realStocksAfterDate...) // To calculuate Bollinger Bands we need the price before and after the date
@@ -68,7 +72,9 @@ func main() {
 	database.ConnectDB()
 
 	// Create dependencies in the correct order
-	stockDataAccess := &dataaccess.StockDataAccessImpl{}
+	stockDataAccess := &dataaccess.StockDataAccessImpl{
+		DB: database.GetDB(),
+	}
 	stockService := &service.StockServiceImpl{
 		StockDataAccess: stockDataAccess,
 	}
