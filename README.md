@@ -2,6 +2,10 @@
 The Stock Game is a simple game where the user has to guess the price of a stock for a given date. The user will see the stock price for a given date and will have to draw the price on a canvas. The user will get points based on how close the user's guess is to the actual price.
 
 
+https://github.com/user-attachments/assets/8a42c077-4be4-4294-b08d-85c0ff717353
+
+
+
 ## Dev Installation
 
 ### Database
