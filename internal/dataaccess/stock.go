@@ -158,8 +158,8 @@ func (s *StockDataAccessImpl) GetStocksBeforeEqualDate(symbol string, beforeDate
 	return stocks
 }
 
-func (s *StockDataAccessImpl) GetStockInfo(symbolUUID string) (model.StockInfo, error) {
-	errorSymbol := model.StockInfo{
+func (s *StockDataAccessImpl) GetStockInfo(symbolUUID string) (result model.StockInfo, err error) {
+	result = model.StockInfo{
 		SymbolUUID: symbolUUID,
 		Symbol:     "",
 		Name:       "",
@@ -171,20 +171,22 @@ func (s *StockDataAccessImpl) GetStockInfo(symbolUUID string) (model.StockInfo, 
 		LIMIT 1
 	`
 	if s.DB == nil {
-		return errorSymbol, fmt.Errorf("database connection is nil")
+		err = fmt.Errorf("database connection is nil")
+		return
 	}
-	rows, err := s.DB.Query(query, symbolUUID)
-	if err != nil {
-		return errorSymbol, fmt.Errorf("error querying stock: %v", err)
+	rows, err2 := s.DB.Query(query, symbolUUID)
+	if err2 != nil {
+		err = fmt.Errorf("error querying stock: %v", err2)
+		return
 	}
 	if rows.Next() {
-		var stock = model.StockInfo{}
-		err := rows.Scan(&stock.Symbol, &stock.Name, &stock.SymbolUUID)
-		if err != nil {
-			return errorSymbol, fmt.Errorf("error scanning stock: %v", err)
+		err2 := rows.Scan(&result.Symbol, &result.Name, &result.SymbolUUID)
+		if err2 != nil {
+			err = fmt.Errorf("error scanning stock: %v", err2)
 		}
-		return stock, nil
+		return
 	} else {
-		return errorSymbol, fmt.Errorf("no data found for symbolUUID: %s", symbolUUID)
+		err = fmt.Errorf("no data found for symbolUUID: %s", symbolUUID)
+		return
 	}
 }
