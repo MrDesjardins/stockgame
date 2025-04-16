@@ -19,49 +19,58 @@ import (
 )
 
 var maxWorkers = runtime.NumCPU() * 2 // Double the CPU cores
+const tableNameStocks = "stocks"
+const tableNameStocksInfo = "stocks_info"
+const maxFieldCVS = 12
 
 func createTables(db *sql.DB) {
 	startTime := time.Now()
-	// Delete existing records before inserting
-	_, err := db.Exec("DROP TABLE stocks;")
+
+	// Use fmt.Sprintf for better clarity and safety with constants
+	dropStocksQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s;", tableNameStocks)
+	_, err := db.Exec(dropStocksQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Delete existing records before inserting
-	_, err = db.Exec("DROP TABLE stocks_info;")
+	dropStocksInfoQuery := fmt.Sprintf("DROP TABLE IF EXISTS %s;", tableNameStocksInfo)
+	_, err = db.Exec(dropStocksInfoQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Create the stocks table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS stocks (
-		id SERIAL PRIMARY KEY,
-    symbol VARCHAR NULL,
-    date DATE NOT NULL,
-    open FLOAT NOT NULL,
-    high FLOAT NOT NULL,
-    low FLOAT NOT NULL,
-    "close" FLOAT NOT NULL,
-    adj_close FLOAT NOT NULL,
-    volume BIGINT NOT NULL
-);`)
+	// Use fmt.Sprintf for the CREATE TABLE statements as well
+	createStocksQuery := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+        id SERIAL PRIMARY KEY,
+        symbol VARCHAR NULL,
+        date DATE NOT NULL,
+        open FLOAT NOT NULL,
+        high FLOAT NOT NULL,
+        low FLOAT NOT NULL,
+        "close" FLOAT NOT NULL,
+        adj_close FLOAT NOT NULL,
+        volume BIGINT NOT NULL
+    );`, tableNameStocks)
+
+	_, err = db.Exec(createStocksQuery)
 	if err != nil {
-		println("Cannot create stocks table")
+		log.Printf("Cannot create %s table: %v", tableNameStocks, err)
 		panic(err)
 	}
 
-	// Create the stocks table
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS stocks_info (
-		id SERIAL PRIMARY KEY,
-    symbol VARCHAR NOT NULL,
-    name VARCHAR NOT NULL,
-		symbol_uuid VARCHAR NOT NULL
-);`)
+	createStocksInfoQuery := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+        id SERIAL PRIMARY KEY,
+        symbol VARCHAR NOT NULL,
+        name VARCHAR NOT NULL,
+        symbol_uuid VARCHAR NOT NULL
+    );`, tableNameStocksInfo)
+
+	_, err = db.Exec(createStocksInfoQuery)
 	if err != nil {
-		println("Cannot create stocks_info table")
+		log.Printf("Cannot create %s table: %v", tableNameStocksInfo, err)
 		panic(err)
 	}
+
 	fmt.Println("Data deletion completed.")
 	fmt.Printf("Time taken drop table + create table: %v\n", time.Since(startTime))
 }
@@ -71,8 +80,8 @@ func insertCompanyInfo(db *sql.DB) {
 	absolutePath := filepath.Join(util.GetProjectRoot(), relativePath)
 	startTime := time.Now()
 
-	// Delete existing records before inserting
-	_, err := db.Exec("TRUNCATE TABLE stocks_info;")
+	truncateQuery := fmt.Sprintf("TRUNCATE TABLE %s;", tableNameStocksInfo)
+	_, err := db.Exec(truncateQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -87,7 +96,7 @@ func insertCompanyInfo(db *sql.DB) {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-	reader.FieldsPerRecord = 12
+	reader.FieldsPerRecord = maxFieldCVS
 	reader.Comma = ','
 	reader.LazyQuotes = true
 
@@ -96,7 +105,10 @@ func insertCompanyInfo(db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	stmt, err := tx.Prepare("INSERT INTO stocks_info (symbol, name, symbol_uuid) VALUES ($1, $2, $3)")
+
+	// Use fmt.Sprintf for the prepared statement
+	insertQuery := fmt.Sprintf("INSERT INTO %s (symbol, name, symbol_uuid) VALUES ($1, $2, $3)", tableNameStocksInfo)
+	stmt, err := tx.Prepare(insertQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -122,15 +134,15 @@ func insertCompanyInfo(db *sql.DB) {
 
 		_, err = stmt.Exec(row[1], row[2], uuid)
 		if err != nil {
-			log.Fatal(err)
 			tx.Rollback()
+			log.Fatal(err)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Fatal(err)
 		tx.Rollback()
+		log.Fatal(err)
 	}
 	fmt.Println("Data insertion completed.")
 	fmt.Printf("Time taken stock_info: %v\n", time.Since(startTime))
@@ -148,13 +160,18 @@ func insertStocksParallel(db *sql.DB) {
 	fileChan := make(chan string, len(files)) // Channel for file paths
 	var wg sync.WaitGroup
 
+	// Transaction for bulk insert
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
 	// Start worker goroutines
-	for i := 0; i < maxWorkers; i++ {
+	for range maxWorkers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for filePath := range fileChan {
-				processStockFile(db, filePath)
+				processStockFile(filePath, tx)
 			}
 		}()
 	}
@@ -170,13 +187,18 @@ func insertStocksParallel(db *sql.DB) {
 
 	// Wait for workers to finish
 	wg.Wait()
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+	}
 
 	fmt.Println("Parallel data insertion completed.")
 	fmt.Printf("Time stock taken: %v\n", time.Since(startTime))
 }
 
 // Process a single stock CSV file
-func processStockFile(db *sql.DB, filePath string) {
+func processStockFile(filePath string, tx *sql.Tx) {
 	symbol := strings.TrimSuffix(filepath.Base(filePath), ".csv")
 	absolutePath := filepath.Join(util.GetProjectRoot(), filePath)
 
@@ -190,21 +212,22 @@ func processStockFile(db *sql.DB, filePath string) {
 
 	// Use COPY command for fast bulk loading
 	query := fmt.Sprintf(`
-		COPY stocks (date, open, high, low, close, adj_close, volume, symbol)
+		COPY %s (date, open, high, low, close, adj_close, volume, symbol)
 		FROM '%s'
 		WITH (FORMAT csv, HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
-	`, cleanedFilePath)
+	`, tableNameStocks, cleanedFilePath)
 
-	_, err = db.Exec(query)
+	_, err = tx.Exec(query)
+
 	if err != nil {
-		fmt.Printf("Error copying CSV file %s: %v\n", filePath, err)
+		log.Fatalf("Error copying CSV file %s: %v\n", filePath, err)
 	}
 }
 
 func addIndex(db *sql.DB) {
 	startTime := time.Now()
 	// Create indexes for the stocks table
-	_, err := db.Exec(`CREATE INDEX idx_stocks_symbol_date ON stocks (symbol, date DESC);`)
+	_, err := db.Exec(`CREATE INDEX idx_stocks_symbol_date ON ` + tableNameStocks + ` (symbol, date DESC);`)
 	if err != nil {
 		println("Cannot create index for stocks table")
 		panic(err)
