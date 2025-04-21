@@ -39,7 +39,7 @@ func createTables(db *sql.DB) {
 		log.Fatal(err)
 	}
 
-	// Use fmt.Sprintf for the CREATE TABLE statements as well
+	// UNLOGGED for performance
 	createStocksQuery := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
         id SERIAL PRIMARY KEY,
         symbol VARCHAR NULL,
@@ -71,22 +71,13 @@ func createTables(db *sql.DB) {
 		panic(err)
 	}
 
-	fmt.Println("Data deletion completed.")
-	fmt.Printf("Time taken drop table + create table: %v\n", time.Since(startTime))
+	fmt.Printf("Drop Table + Creating Table Completed: %v\n", time.Since(startTime))
 }
 
 func insertCompanyInfo(db *sql.DB) {
 	relativePath := "./data/raw/symbols_valid_meta.csv"
 	absolutePath := filepath.Join(util.GetProjectRoot(), relativePath)
 	startTime := time.Now()
-
-	truncateQuery := fmt.Sprintf("TRUNCATE TABLE %s;", tableNameStocksInfo)
-	_, err := db.Exec(truncateQuery)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Deleted existing records")
 
 	// Open the file and read the data line by line
 	file, err := os.Open(absolutePath)
@@ -144,8 +135,7 @@ func insertCompanyInfo(db *sql.DB) {
 		tx.Rollback()
 		log.Fatal(err)
 	}
-	fmt.Println("Data insertion completed.")
-	fmt.Printf("Time taken stock_info: %v\n", time.Since(startTime))
+	fmt.Printf("Time to insert data into %s table: %v\n", tableNameStocksInfo, time.Since(startTime))
 }
 func insertStocksParallel(db *sql.DB) {
 	dirPath := "./data/raw/stocks/"
@@ -157,71 +147,142 @@ func insertStocksParallel(db *sql.DB) {
 	}
 	fmt.Println("Found", len(files), "files in directory")
 
-	fileChan := make(chan string, len(files)) // Channel for file paths
+	fileChan := make(chan string, len(files))
 	var wg sync.WaitGroup
 
-	// Transaction for bulk insert
-	tx, err := db.Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Shared slice to store cleaned file paths
+	var cleanedFiles []string
+	var mu sync.Mutex
+
 	// Start worker goroutines
-	for range maxWorkers {
+	for i := 0; i < maxWorkers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for filePath := range fileChan {
-				processStockFile(filePath, tx)
+				cleanedFilePath, err := preprocessCSV(filepath.Join(util.GetProjectRoot(), filePath), getSymbol(filePath))
+				if err != nil {
+					fmt.Printf("Error preprocessing file %s: %v\n", filePath, err)
+					continue
+				}
+
+				mu.Lock()
+				cleanedFiles = append(cleanedFiles, cleanedFilePath)
+				mu.Unlock()
 			}
 		}()
 	}
 
-	// Send file paths to the channel
+	// Feed the file paths
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".csv") {
-			filePath := filepath.Join(dirPath, file.Name())
-			fileChan <- filePath
+			fileChan <- filepath.Join(dirPath, file.Name())
 		}
 	}
-	close(fileChan) // Close channel after sending all file paths
-
-	// Wait for workers to finish
+	close(fileChan)
 	wg.Wait()
-	err = tx.Commit()
+	fmt.Printf("Insert - PreProcessing took: %v\n", time.Since(startTime))
+	buckInsertTime := time.Now()
+
+	// Performance
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s SET (autovacuum_enabled = false)", tableNameStocks))
 	if err != nil {
-		tx.Rollback()
-		log.Fatal(err)
+		log.Fatal("Failed to disable autovacuum:", err)
+	}
+	_, err = db.Exec("SET session_replication_role = 'replica'") // Disables triggers
+	if err != nil {
+		log.Fatal("Failed to disable triggers:", err)
 	}
 
-	fmt.Println("Parallel data insertion completed.")
-	fmt.Printf("Time stock taken: %v\n", time.Since(startTime))
+	// Create a channel for file insertion tasks and error reporting
+	type insertResult struct {
+		filePath string
+		err      error
+	}
+	resultChan := make(chan insertResult, len(cleanedFiles))
+
+	// Use a semaphore pattern to limit concurrent transactions, too many can cause contention
+	concurrentTxLimit := 4
+	if concurrentTxLimit > maxWorkers {
+		concurrentTxLimit = maxWorkers
+	}
+
+	sem := make(chan struct{}, concurrentTxLimit)
+
+	// Launch workers to insert files in parallel
+	for _, cleanedFile := range cleanedFiles {
+		sem <- struct{}{} // Acquire semaphore
+		go func(file string) {
+			defer func() { <-sem }() // Release semaphore when done
+
+			// Create transaction for this file
+			tx, err := db.Begin()
+			if err != nil {
+				resultChan <- insertResult{file, fmt.Errorf("begin transaction failed: %v", err)}
+				return
+			}
+
+			err = bulkInsertStockFile(file, tx)
+			if err != nil {
+				tx.Rollback()
+				resultChan <- insertResult{file, err}
+				return
+			}
+
+			if err := tx.Commit(); err != nil {
+				resultChan <- insertResult{file, fmt.Errorf("commit failed: %v", err)}
+				return
+			}
+
+			_ = os.Remove(file)
+			resultChan <- insertResult{file, nil}
+		}(cleanedFile)
+	}
+
+	// Collect results
+	var insertErrors []string
+	for i := 0; i < len(cleanedFiles); i++ {
+		result := <-resultChan
+		if result.err != nil {
+			insertErrors = append(insertErrors, fmt.Sprintf("Error with file %s: %v", result.filePath, result.err))
+		}
+	}
+
+	// Check for any errors
+	if len(insertErrors) > 0 {
+		for _, err := range insertErrors {
+			fmt.Println(err)
+		}
+		log.Fatal("Failed to insert one or more files")
+	}
+
+	// Performance - restore settings
+	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s SET (autovacuum_enabled = true)", tableNameStocks))
+	if err != nil {
+		log.Fatal("Failed to enable autovacuum:", err)
+	}
+	_, err = db.Exec("SET session_replication_role = 'origin'") // Re-enables triggers
+	if err != nil {
+		log.Fatal("Failed to enable triggers:", err)
+	}
+
+	fmt.Printf("Insert - Parallel data insertion (bulk) completed in %v\n", time.Since(buckInsertTime))
+	fmt.Printf("Insert time taken: %v\n", time.Since(startTime))
 }
 
-// Process a single stock CSV file
-func processStockFile(filePath string, tx *sql.Tx) {
-	symbol := strings.TrimSuffix(filepath.Base(filePath), ".csv")
-	absolutePath := filepath.Join(util.GetProjectRoot(), filePath)
-
-	// Preprocess the CSV file
-	cleanedFilePath, err := preprocessCSV(absolutePath, symbol)
-	if err != nil {
-		fmt.Printf("Error preprocessing CSV file %s: %v\n", filePath, err)
-		return
-	}
-	defer os.Remove(cleanedFilePath) // Remove temp file after processing
-
-	// Use COPY command for fast bulk loading
+func bulkInsertStockFile(filePath string, tx *sql.Tx) error {
 	query := fmt.Sprintf(`
 		COPY %s (date, open, high, low, close, adj_close, volume, symbol)
 		FROM '%s'
 		WITH (FORMAT csv, HEADER TRUE, DELIMITER ',', QUOTE '"', ESCAPE '\', NULL '');
-	`, tableNameStocks, cleanedFilePath)
+	`, tableNameStocks, filePath)
 
-	_, err = tx.Exec(query)
+	_, err := tx.Exec(query)
+	return err
+}
 
-	if err != nil {
-		log.Fatalf("Error copying CSV file %s: %v\n", filePath, err)
-	}
+func getSymbol(filePath string) string {
+	return strings.TrimSuffix(filepath.Base(filePath), ".csv")
 }
 
 func addIndex(db *sql.DB) {
@@ -302,7 +363,12 @@ func main() {
 	// Create the SQL Lite database if it doesn't exist
 	// Create a connection to the SQL Lite database
 	println("Max workers: ", maxWorkers)
-	database.ConnectDB()
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)
 	db := database.GetDB()
 	startTime := time.Now()
 	createTables(db)

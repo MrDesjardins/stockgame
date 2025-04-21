@@ -69,7 +69,13 @@ func main() {
 		panic("Error loading .env file")
 	}
 	port := os.Getenv("VITE_API_PORT")
-	database.ConnectDB()
+
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)
 
 	// Create dependencies in the correct order
 	stockDataAccess := &dataaccess.StockDataAccessImpl{
@@ -92,13 +98,16 @@ func main() {
 
 func SetupRouter(handler *SolutionHandler) *gin.Engine {
 	router := gin.Default()
+
 	// Cors
 	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -108,5 +117,17 @@ func SetupRouter(handler *SolutionHandler) *gin.Engine {
 
 	router.GET("/stocks", handler.getStocks)
 	router.POST("/solution", handler.postSolution)
+	router.Static("/assets", "./cmd/api-server/public/assets")
+	router.GET("/", func(c *gin.Context) {
+		// Read the HTML file
+		htmlContent, err := os.ReadFile("./cmd/api-server/public/index.html")
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Error reading index.html")
+			return
+		}
+
+		c.Header("Content-Type", "text/html")
+		c.String(http.StatusOK, string(htmlContent))
+	})
 	return router
 }

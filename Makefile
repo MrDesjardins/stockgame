@@ -6,7 +6,8 @@
 .PHONY: unit-test-watch 
 .PHONY: unit-test-coverage
 .PHONY: db
-.PHONY: release
+.PHONY: web-release
+.PHONY: go-release
 .PHONY: sync-env
 .PHONY: generate-constants
 
@@ -48,7 +49,17 @@ container-debug:
 db-debug:
 	PGPASSWORD=mypassword psql -h localhost -p 5432 -U myuser -d mydb
 
-release: generate-constants
+web-release:
+	@echo "Running web release build..."
+	(cd cmd/frontend-server && . ~/.nvm/nvm.sh && nvm use && npm run build)
+	@echo "Running web go server..."
+	go build -o bin/api-server cmd/api-server/main.go
+	@echo "Move static files to bin folder..."
+	mkdir -p bin/assets
+	cp -r cmd/frontend-server/dist/* bin
+	cp .env bin/.env
+	
+go-release: generate-constants
 	@echo "Running release build..."
 	go build -o bin/api-server cmd/api-server/main.go
 	go build -o bin/data-loader cmd/data-loader/main.go

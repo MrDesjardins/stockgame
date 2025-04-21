@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 
 	_ "github.com/lib/pq"
 )
@@ -13,10 +14,10 @@ type DBInterface interface {
 }
 
 // Connect to DB
-func ConnectDB() {
+func ConnectDB(host, port, user, password, dbname string) {
 	var err error
 
-	dsn := "host=localhost port=5432 user=myuser password=mypassword dbname=mydb sslmode=disable connect_timeout=5"
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable connect_timeout=5", host, port, user, password, dbname)
 	db, err = sql.Open("postgres", dsn)
 	if err != nil {
 		println("Error connecting to the database")

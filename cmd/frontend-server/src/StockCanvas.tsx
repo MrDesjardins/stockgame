@@ -40,8 +40,8 @@ export function StockCanvas(props: StockCanvasProps) {
       animate(
         "Background",
         (
-          frame: number,
-          timeFromBeginning: number,
+          _frame: number,
+          _timeFromBeginning: number,
           fps: number,
           maxFps: number
         ) => {

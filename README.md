@@ -56,6 +56,8 @@ select count(*) from stocks;
 
 ## Backlog Top Priorities
 
+- [ ] Change `db.go` to use environment variables for the host, port, user, password and database name
+- [ ] Find a host, maybe fly.io to host the website, database and API 
 - [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] New button should clean the UI and have some kind of waiting animation
 - [ ] Make the canvas more responsive (mobile friendly?)
