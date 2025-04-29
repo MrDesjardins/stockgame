@@ -52,11 +52,36 @@ select count(*) from stocks;
 └─────────────────┘
 ```
 
+# Production
+## Fly.io
+
+```sh 
+fly deploy
+fly postgres create --name mydb 
+fly postgres attach mydb --app stockgame-young-shape-4194
+```
+
+You can check the deployment with: 
+
+```sh
+fly status
+fly logs
+```
+
+To load the data into the database you can use the following command:
+
+```sh
+pg_dump -U myuser -h localhost -Fc mydb > backup.dump
+fly proxy 5432 -a mydb
+pg_restore -U stockgame_young_shape_4194 -h localhost -d stockgame_young_shape_4194 -W --clean --if-exists backup.dump
+
+```
+
+
 # Todo
 
 ## Backlog Top Priorities
 
-- [ ] Change `db.go` to use environment variables for the host, port, user, password and database name
 - [ ] Find a host, maybe fly.io to host the website, database and API 
 - [ ] Make more test for API endpoints (/solution) by mocking service
 - [ ] New button should clean the UI and have some kind of waiting animation
@@ -98,3 +123,4 @@ select count(*) from stocks;
 - [x] Animations are quick and should be configurable using the FPS mechanism. E.g. saying this should take 3 seconds to animate and we know we have a TARGET_FPS of 30 so it should take  90 frames to render the whole animation.
 - [x] Change the animation to have a single loop outside the StockCanvas and animation can hook into it
 - [x] Make the canvas draw with touch (mobile support?)
+- [x] Change `db.go` to use environment variables for the host, port, user, password and database name

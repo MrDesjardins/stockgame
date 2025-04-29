@@ -1,0 +1,38 @@
+# flyctl launch added from .gitignore
+**/.env
+**/data/raw
+**/data/db
+**/bin
+**/tmp
+**/coverage
+
+# flyctl launch added from .mypy_cache/.gitignore
+# Automatically created by mypy
+.mypy_cache/**/*
+
+# flyctl launch added from cmd/frontend-server/.gitignore
+# Logs
+cmd/frontend-server/**/logs
+cmd/frontend-server/**/*.log
+cmd/frontend-server/**/npm-debug.log*
+cmd/frontend-server/**/yarn-debug.log*
+cmd/frontend-server/**/yarn-error.log*
+cmd/frontend-server/**/pnpm-debug.log*
+cmd/frontend-server/**/lerna-debug.log*
+
+cmd/frontend-server/**/node_modules
+cmd/frontend-server/**/dist
+cmd/frontend-server/**/dist-ssr
+cmd/frontend-server/**/*.local
+
+# Editor directories and files
+cmd/frontend-server/**/.vscode/*
+!cmd/frontend-server/**/.vscode/extensions.json
+cmd/frontend-server/**/.idea
+cmd/frontend-server/**/.DS_Store
+cmd/frontend-server/**/*.suo
+cmd/frontend-server/**/*.ntvs*
+cmd/frontend-server/**/*.njsproj
+cmd/frontend-server/**/*.sln
+cmd/frontend-server/**/*.sw?
+fly.toml

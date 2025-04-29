@@ -57,8 +57,8 @@ web-release:
 	@echo "Move static files to bin folder..."
 	mkdir -p bin/assets
 	cp -r cmd/frontend-server/dist/* bin
-	cp .env bin/.env
-	
+#	cp .env bin/.env
+
 go-release: generate-constants
 	@echo "Running release build..."
 	go build -o bin/api-server cmd/api-server/main.go
@@ -71,3 +71,11 @@ sync-env:
 generate-constants:
 	@echo "Running generate-constants..."
 	go run cmd/back-to-front/main.go
+
+
+fly-env:
+	fly ssh console -C "printenv"
+
+docker-build:
+	DOCKER_BUILDKIT=0 docker build -t stockgame . 
+	docker run --rm -it adec4ddd0abe sh

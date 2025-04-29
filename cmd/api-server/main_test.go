@@ -13,6 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+const isProduction = false
+
 type StockServiceMockImpl struct {
 	mock.Mock
 }
@@ -98,7 +100,7 @@ func TestApiServerRequestGetStocks(t *testing.T) {
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		router := SetupRouter(handler)
+		router := SetupRouter(handler, isProduction)
 
 		req, _ := http.NewRequest(http.MethodGet, "/stocks", nil)
 		c.Request = req
@@ -131,7 +133,7 @@ func TestApiServerRequestPostSolution(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		bodyIoReader := strings.NewReader(body)
 
-		router := SetupRouter(handler)
+		router := SetupRouter(handler, isProduction)
 
 		req, _ := http.NewRequest(http.MethodPost, "/solution", bodyIoReader)
 		c.Request = req
@@ -158,7 +160,7 @@ func TestApiServerRequestPostSolution(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		bodyIoReader := strings.NewReader(body)
 
-		router := SetupRouter(handler)
+		router := SetupRouter(handler, isProduction)
 
 		req, _ := http.NewRequest(http.MethodPost, "/solution", bodyIoReader)
 		c.Request = req
@@ -186,7 +188,7 @@ func TestApiServerRequestPostSolution(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		bodyIoReader := strings.NewReader(body)
 
-		router := SetupRouter(handler)
+		router := SetupRouter(handler, isProduction)
 
 		req, _ := http.NewRequest(http.MethodPost, "/solution", bodyIoReader)
 		c.Request = req
@@ -213,7 +215,7 @@ func TestApiServerRequestPostSolution(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		bodyIoReader := strings.NewReader(body)
 
-		router := SetupRouter(handler)
+		router := SetupRouter(handler, isProduction)
 
 		req, _ := http.NewRequest(http.MethodPost, "/solution", bodyIoReader)
 		c.Request = req

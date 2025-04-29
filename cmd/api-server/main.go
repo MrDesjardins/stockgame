@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -64,9 +65,15 @@ func (h *SolutionHandler) postSolution(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, solutionResponse)
 }
 func main() {
-	err := godotenv.Load(".env")
-	if err != nil {
-		panic("Error loading .env file")
+	env := os.Getenv("GO_ENV")
+	println("env", env)
+	isProduction := env == "production"
+	if !isProduction {
+		err := godotenv.Load(".env")
+		if err != nil {
+
+			panic("Error loading .env file")
+		}
 	}
 	port := os.Getenv("VITE_API_PORT")
 
@@ -75,14 +82,20 @@ func main() {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
-	database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)
-
+	if isProduction {
+		dbUrl := os.Getenv("DATABASE_URL")
+		database.ConnectDBFullPath(dbUrl)
+	} else {
+		database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)
+	}
 	// Create dependencies in the correct order
 	stockDataAccess := &dataaccess.StockDataAccessImpl{
 		DB: database.GetDB(),
 	}
+	stockLogic := &logic.StockLogicImpl{}
 	stockService := &service.StockServiceImpl{
 		StockDataAccess: stockDataAccess,
+		StockLogic:      stockLogic,
 	}
 
 	// Use stockService in your handler initialization
@@ -91,13 +104,21 @@ func main() {
 		ScoringLogic: &logic.ScoringLogicImpl{},
 	}
 
-	router := SetupRouter(handler)
-
-	router.Run(fmt.Sprintf("localhost:%s", port))
+	router := SetupRouter(handler, isProduction)
+	log.Printf("Listening on 0.0.0.0:%s", port)
+	router.Run(fmt.Sprintf("0.0.0.0:%s", port))
 }
 
-func SetupRouter(handler *SolutionHandler) *gin.Engine {
+func SetupRouter(handler *SolutionHandler, isProduction bool) *gin.Engine {
 	router := gin.Default()
+	// Read the HTML file
+	path := ""
+	if isProduction {
+		gin.SetMode(gin.ReleaseMode)
+		path = "/usr/local/bin/public/"
+	} else {
+		path = "./cmd/api-server/public/"
+	}
 
 	// Cors
 	router.Use(func(c *gin.Context) {
@@ -117,12 +138,12 @@ func SetupRouter(handler *SolutionHandler) *gin.Engine {
 
 	router.GET("/stocks", handler.getStocks)
 	router.POST("/solution", handler.postSolution)
-	router.Static("/assets", "./cmd/api-server/public/assets")
+	router.Static("/assets", path+"assets")
 	router.GET("/", func(c *gin.Context) {
-		// Read the HTML file
-		htmlContent, err := os.ReadFile("./cmd/api-server/public/index.html")
+
+		htmlContent, err := os.ReadFile(path + "index.html")
 		if err != nil {
-			c.String(http.StatusInternalServerError, "Error reading index.html")
+			c.String(http.StatusInternalServerError, fmt.Sprintf("Error reading %sindex.html", path))
 			return
 		}
 

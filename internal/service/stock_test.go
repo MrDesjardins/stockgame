@@ -3,6 +3,7 @@ package service
 import (
 	"slices"
 	"stockgame/internal/dataaccess"
+	"stockgame/internal/logic"
 	"stockgame/internal/model"
 	"testing"
 )
@@ -10,8 +11,10 @@ import (
 func TestGetRandomStock(t *testing.T) {
 	choices := []string{"AAPL", "GOOGL", "MSFT", "AMZN", "META"}
 	mockDataAccess := &dataaccess.StockDataAccessImpl{}
+	mockStockLogic := &logic.StockLogicImpl{}
 	mockService := &StockServiceImpl{
 		StockDataAccess: mockDataAccess,
+		StockLogic:      mockStockLogic,
 	}
 	stock := mockService.GetRandomStock(choices)
 	if slices.Contains(choices, stock) == false {
@@ -85,8 +88,10 @@ func TestGetRandomStockFromPersistence(t *testing.T) {
 			}
 		},
 	}
+	mockStockLogic := &logic.StockLogicImpl{}
 	mockService := &StockServiceImpl{
 		StockDataAccess: mockDataAccess,
+		StockLogic:      mockStockLogic,
 		GetRandomStockSelectorFunc: func(symbols []string) string {
 			return "AAPL"
 		},
@@ -101,10 +106,12 @@ func TestGetRandomStockFromPersistence(t *testing.T) {
 }
 
 func TestGetRandomStockWithRandomDayRange(t *testing.T) {
+	mockStockLogic := &logic.StockLogicImpl{}
 	t.Run("No stock from persistence", func(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				return []model.StockPublic{}
 			},
@@ -119,6 +126,7 @@ func TestGetRandomStockWithRandomDayRange(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				return []model.StockPublic{
 					{SymbolUUID: "AAPL", Volume: 50000, Date: "2023-01-01", Open: 100, High: 110, Low: 90, Close: 105, AdjClose: 1233},
@@ -137,6 +145,7 @@ func TestGetRandomStockWithRandomDayRange(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				return []model.StockPublic{
 					{SymbolUUID: "AAPL", Volume: 50000, Date: "2023-01-01", Open: 100, High: 110, Low: 90, Close: 105, AdjClose: 1233},
@@ -155,6 +164,7 @@ func TestGetRandomStockWithRandomDayRange(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				return []model.StockPublic{
 					{SymbolUUID: "AAPL", Volume: 50000, Date: "2023-01-01", Open: 0, High: 110, Low: 90, Close: 105, AdjClose: 1233},
@@ -173,6 +183,7 @@ func TestGetRandomStockWithRandomDayRange(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				return []model.StockPublic{
 					{SymbolUUID: "AAPL", Volume: 24000, Date: "2023-01-01", Open: 100, High: 110, Low: 90, Close: 105, AdjClose: 1233},
@@ -191,6 +202,7 @@ func TestGetRandomStockWithRandomDayRange(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				count++
 				return []model.StockPublic{
@@ -209,6 +221,7 @@ func TestGetRandomStockWithRandomDayRange(t *testing.T) {
 		mockDataAccess := &StockDataAccessMockImpl{}
 		mockService := &StockServiceImpl{
 			StockDataAccess: mockDataAccess,
+			StockLogic:      mockStockLogic,
 			GetRandomStockFromPersistenceSelectorFunc: func() []model.StockPublic {
 				count++
 				if count == 1 {

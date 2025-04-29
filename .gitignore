@@ -4,3 +4,5 @@ data/db/
 bin/
 tmp/
 coverage/
+*.dump
+cmd/api-server/public/

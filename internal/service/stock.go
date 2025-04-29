@@ -3,6 +3,7 @@ package service
 import (
 	"math/rand/v2"
 	"stockgame/internal/dataaccess"
+	"stockgame/internal/logic"
 	"stockgame/internal/model"
 )
 
@@ -19,6 +20,7 @@ type StockServiceImpl struct {
 	StockDataAccess                           dataaccess.StockDataAccess
 	GetRandomStockSelectorFunc                func(choices []string) string
 	GetRandomStockFromPersistenceSelectorFunc func() []model.StockPublic
+	StockLogic                                logic.StockLogic
 }
 
 func (s *StockServiceImpl) GetRandomStockWithRandomDayRange(numberOfDays int) []model.StockPublic {
@@ -30,27 +32,9 @@ OuterLoop:
 		} else {
 			stocks = s.GetRandomStockFromPersistence()
 		}
-		// Check if there is activity (volume) for the days of the stock
-		volume := 0
-		for _, stock := range stocks {
-			volume += stock.Volume
-		}
-		if len(stocks) == 0 {
-			continue // Try again
-		}
-		volumeAverage := volume / len(stocks)
-		if volumeAverage < 25000 {
-			continue // Try again
-		}
-		upperBound := len(stocks) - numberOfDays
-		if upperBound <= 0 {
-			continue // Try again
-		}
-		// Check if some stock in the slice has an open price to zero
-		for _, stock := range stocks {
-			if stock.Open == 0 {
-				continue OuterLoop // Try again
-			}
+		isValid, upperBound := s.StockLogic.IsStocksValid(stocks, numberOfDays)
+		if !isValid {
+			continue OuterLoop // Try again
 		}
 		lowerBound := rand.IntN(upperBound)
 		return stocks[lowerBound : lowerBound+numberOfDays] // Found a good candidate

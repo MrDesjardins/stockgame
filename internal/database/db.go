@@ -27,6 +27,17 @@ func ConnectDB(host, port, user, password, dbname string) {
 	println("Connected to the database")
 }
 
+func ConnectDBFullPath(dsn string) {
+	var err error
+
+	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		println("Error connecting to the database")
+		panic(err)
+	}
+
+	println("Connected to the database")
+}
 func CloseDB() {
 	if db != nil {
 		db.Close()
