@@ -11,6 +11,7 @@ import (
 	"stockgame/internal/logic"
 	"stockgame/internal/model"
 	"stockgame/internal/service"
+	"stockgame/internal/util"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -75,15 +76,10 @@ func main() {
 			panic("Error loading .env file")
 		}
 	}
-	port := os.Getenv("VITE_API_PORT")
+	port := util.GetWebEnv()
 
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
+	isProduction, dbHost, dbPort, dbUser, dbPassword, dbName, dbUrl := util.GetDBEnv()
 	if isProduction {
-		dbUrl := os.Getenv("DATABASE_URL")
 		database.ConnectDBFullPath(dbUrl)
 	} else {
 		database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)

@@ -10,6 +10,9 @@
 .PHONY: go-release
 .PHONY: sync-env
 .PHONY: generate-constants
+.PHONY: generate-data
+.PHONY: fly-env
+.PHONY: docker-build
 
 dev: sync-env generate-constants
 	air -c .air.toml & \
@@ -63,6 +66,7 @@ go-release: generate-constants
 	@echo "Running release build..."
 	go build -o bin/api-server cmd/api-server/main.go
 	go build -o bin/data-loader cmd/data-loader/main.go
+	go build -o bin/generate-data cmd/generate-data/main.go
 
 sync-env:
 	@echo "Running sync-env..."
@@ -72,6 +76,9 @@ generate-constants:
 	@echo "Running generate-constants..."
 	go run cmd/back-to-front/main.go
 
+generate-data:
+	@echo "Running generate-data..."
+	go run cmd/generate-data/main.go
 
 fly-env:
 	fly ssh console -C "printenv"

@@ -6,3 +6,4 @@ tmp/
 coverage/
 *.dump
 cmd/api-server/public/
+generated_files/

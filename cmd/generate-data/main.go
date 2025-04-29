@@ -2,20 +2,17 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"stockgame/internal/dataaccess"
 	"stockgame/internal/database"
 	"stockgame/internal/logic"
 	"stockgame/internal/service"
+	"stockgame/internal/util"
 	"time"
 )
 
 func main() {
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
+	_, dbHost, dbPort, dbUser, dbPassword, dbName, _ := util.GetDBEnv()
+
 	database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)
 	db := database.GetDB()
 	startTime := time.Now()
