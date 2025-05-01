@@ -1,6 +1,7 @@
 package dataaccess
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,17 +15,20 @@ import (
 //		code := m.Run()
 //		os.Exit(code)
 //	}
-// func TestGetStock(t *testing.T) {
-// 	mockService := &StockDataAccessImpl{}
-// 	EXPECTED := 1000
-// 	stock := mockService.GetUniqueStockSymbols()
-// 	if len(stock) < EXPECTED {
-// 		t.Errorf("Expected atleast %d and not %d", EXPECTED, len(stock))
-// 	}
-// }
+//
+//	func TestGetStock(t *testing.T) {
+//		mockService := &StockDataAccessImpl{}
+//		EXPECTED := 1000
+//		stock := mockService.GetUniqueStockSymbols()
+//		if len(stock) < EXPECTED {
+//			t.Errorf("Expected atleast %d and not %d", EXPECTED, len(stock))
+//		}
+//	}
+var ctx = context.Background()
 
 func TestGetStockInfo_QuerySuccess(t *testing.T) {
 	db, mock, err := sqlmock.New()
+
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -36,7 +40,7 @@ func TestGetStockInfo_QuerySuccess(t *testing.T) {
 		WillReturnRows(rows)
 
 	dao := &StockDataAccessImpl{DB: db}
-	result, err := dao.GetStockInfo("uuid-123")
+	result, err := dao.GetStockInfo(ctx, "uuid-123")
 
 	assert.NoError(t, err)
 	assert.Equal(t, "AAPL", result.Symbol)
@@ -56,7 +60,7 @@ func TestGetStockInfo_QueryNoRows(t *testing.T) {
 		WillReturnRows(rows)
 
 	dao := &StockDataAccessImpl{DB: db}
-	result, err := dao.GetStockInfo("uuid-456")
+	result, err := dao.GetStockInfo(ctx, "uuid-456")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no data found for symbolUUID: uuid-456")
@@ -73,7 +77,7 @@ func TestGetStockInfo_QueryError(t *testing.T) {
 		WillReturnError(fmt.Errorf("database error"))
 
 	dao := &StockDataAccessImpl{DB: db}
-	result, err := dao.GetStockInfo("uuid-789")
+	result, err := dao.GetStockInfo(ctx, "uuid-789")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error querying stock")

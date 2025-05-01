@@ -1,12 +1,15 @@
 package service
 
 import (
+	"context"
 	"slices"
 	"stockgame/internal/dataaccess"
 	"stockgame/internal/logic"
 	"stockgame/internal/model"
 	"testing"
 )
+
+var ctx = context.Background()
 
 func TestGetRandomStock(t *testing.T) {
 	choices := []string{"AAPL", "GOOGL", "MSFT", "AMZN", "META"}
@@ -23,54 +26,54 @@ func TestGetRandomStock(t *testing.T) {
 }
 
 type StockDataAccessMockImpl struct {
-	GetPricesForStockFunc            func(symbol string) []model.StockPublic
-	GetUniqueStockSymbolsFunc        func() []string
+	GetPricesForStockFunc            func(ctx context.Context, symbol string) []model.StockPublic
+	GetUniqueStockSymbolsFunc        func(ctx context.Context) []string
 	GetUniqueStockSymbolsFuncCall    int
-	GetPricesForStockInTimeRangeFunc func(symbol, startDate, endDate string) []model.Stock
-	GetStocksAfterDateFunc           func(symbol, afterDate string) []model.Stock
-	GetStocksBeforeEqualDateFunc     func(symbol, beforeDate string) []model.Stock
-	GetStockInfoFunc                 func(symbolUUID string) (model.StockInfo, error)
+	GetPricesForStockInTimeRangeFunc func(ctx context.Context, symbol, startDate, endDate string) []model.Stock
+	GetStocksAfterDateFunc           func(ctx context.Context, symbol, afterDate string) []model.Stock
+	GetStocksBeforeEqualDateFunc     func(ctx context.Context, symbol, beforeDate string) []model.Stock
+	GetStockInfoFunc                 func(ctx context.Context, symbolUUID string) (model.StockInfo, error)
 }
 
-func (s *StockDataAccessMockImpl) GetPricesForStock(symbol string) []model.StockPublic {
+func (s *StockDataAccessMockImpl) GetPricesForStock(ctx context.Context, symbol string) []model.StockPublic {
 	if s.GetPricesForStockFunc != nil {
-		return s.GetPricesForStockFunc(symbol)
+		return s.GetPricesForStockFunc(ctx, symbol)
 	}
 	return nil
 }
 
-func (s *StockDataAccessMockImpl) GetUniqueStockSymbols() []string {
+func (s *StockDataAccessMockImpl) GetUniqueStockSymbols(ctx context.Context) []string {
 	if s.GetUniqueStockSymbolsFunc != nil {
 		s.GetUniqueStockSymbolsFuncCall++
-		return s.GetUniqueStockSymbolsFunc()
+		return s.GetUniqueStockSymbolsFunc(ctx)
 	}
 	return nil
 }
 
-func (s *StockDataAccessMockImpl) GetPricesForStockInTimeRange(symbol, startDate, endDate string) []model.Stock {
+func (s *StockDataAccessMockImpl) GetPricesForStockInTimeRange(ctx context.Context, symbol, startDate, endDate string) []model.Stock {
 	if s.GetPricesForStockInTimeRangeFunc != nil {
-		return s.GetPricesForStockInTimeRangeFunc(symbol, startDate, endDate)
+		return s.GetPricesForStockInTimeRangeFunc(ctx, symbol, startDate, endDate)
 	}
 	return nil
 }
 
-func (s *StockDataAccessMockImpl) GetStocksAfterDate(symbol, afterDate string) []model.Stock {
+func (s *StockDataAccessMockImpl) GetStocksAfterDate(ctx context.Context, symbol, afterDate string) []model.Stock {
 	if s.GetStocksAfterDateFunc != nil {
-		return s.GetStocksAfterDateFunc(symbol, afterDate)
+		return s.GetStocksAfterDateFunc(ctx, symbol, afterDate)
 	}
 	return nil
 }
 
-func (s *StockDataAccessMockImpl) GetStocksBeforeEqualDate(symbol, beforeDate string) []model.Stock {
+func (s *StockDataAccessMockImpl) GetStocksBeforeEqualDate(ctx context.Context, symbol, beforeDate string) []model.Stock {
 	if s.GetStocksBeforeEqualDateFunc != nil {
-		return s.GetStocksBeforeEqualDateFunc(symbol, beforeDate)
+		return s.GetStocksBeforeEqualDateFunc(ctx, symbol, beforeDate)
 	}
 	return nil
 }
 
-func (s *StockDataAccessMockImpl) GetStockInfo(symbolUUID string) (model.StockInfo, error) {
+func (s *StockDataAccessMockImpl) GetStockInfo(ctx context.Context, symbolUUID string) (model.StockInfo, error) {
 	if s.GetStockInfoFunc != nil {
-		return s.GetStockInfoFunc(symbolUUID)
+		return s.GetStockInfoFunc(ctx, symbolUUID)
 	}
 	return model.StockInfo{}, nil
 }
@@ -78,10 +81,10 @@ func (s *StockDataAccessMockImpl) GetStockInfo(symbolUUID string) (model.StockIn
 func TestGetRandomStockFromPersistence(t *testing.T) {
 	// Create a mockDataAccess object with a function GetUniqueStockSymbols that return fake symboles
 	mockDataAccess := &StockDataAccessMockImpl{
-		GetUniqueStockSymbolsFunc: func() []string {
+		GetUniqueStockSymbolsFunc: func(ctx context.Context) []string {
 			return []string{"AAPL", "GOOGL"}
 		},
-		GetPricesForStockFunc: func(symbol string) []model.StockPublic {
+		GetPricesForStockFunc: func(ctx context.Context, symbol string) []model.StockPublic {
 			return []model.StockPublic{
 				{SymbolUUID: "AAPL", Volume: 1000, Date: "2023-01-01", Open: 100, High: 110, Low: 90, Close: 105, AdjClose: 1233},
 				{SymbolUUID: "AAPL", Volume: 2000, Date: "2023-01-02", Open: 101, High: 111, Low: 89, Close: 107, AdjClose: 1550},

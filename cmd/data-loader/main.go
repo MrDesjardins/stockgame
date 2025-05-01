@@ -365,7 +365,7 @@ func main() {
 	println("Max workers: ", maxWorkers)
 	_, dbHost, dbPort, dbUser, dbPassword, dbName, _ := util.GetDBEnv()
 	database.ConnectDB(dbHost, dbPort, dbUser, dbPassword, dbName)
-	db := database.GetDB()
+	db := database.GetRawDB()
 	startTime := time.Now()
 	createTables(db)
 	insertStocksParallel(db)

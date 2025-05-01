@@ -4,12 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
+	"stockgame/internal/database"
 	"stockgame/internal/model"
+	"strconv"
 	"sync"
+	"time"
 )
 
 const FOLDER_GENERATED_FILE = "generated_files"
 
+var maxWorkers = runtime.NumCPU() * 2 // Double the CPU cores
 // Create a struct to hold the combined data
 type FileData struct {
 	Info   model.StockInfo     `json:"info"`
@@ -25,45 +30,88 @@ type GeneratorServiceImpl struct {
 }
 
 func (s *GeneratorServiceImpl) GenerateFiles(numberOfFiles int) {
-	// Set to know if the stock already taken
 	s.DeletePreviousFiles()
 	stockSet := make(map[string]bool)
-
-	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	// Launch goroutines based on fixed count
-	for i := 0; i < numberOfFiles; i++ {
+	// Further limit concurrent workers to avoid DB connection issues
+	maxWorkers := maxWorkers // int(float64(maxConnection) * 0.75)
+
+	fmt.Printf("Using %d workers based on available database connections\n", maxWorkers)
+
+	// Add periodic stats logging
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	go func() {
+		for range ticker.C {
+			database.LogDBStats()
+		}
+	}()
+
+	jobs := make(chan int, numberOfFiles)
+	var wg sync.WaitGroup
+
+	// Start worker pool with limited goroutines
+	for w := 0; w < maxWorkers; w++ {
 		wg.Add(1)
-		go func() {
+		go func(workerId int) {
 			defer wg.Done()
 
-			// Get a random stock symbol
-			stockPublics := s.StockService.GetRandomStockWithRandomDayRange(model.Number_initial_stock_shown)
-			symbolUUID := stockPublics[0].SymbolUUID
+			for i := range jobs {
+				fmt.Printf("Worker %d processing job: %d\n", workerId, i)
 
-			mu.Lock()
-			// Check if we've already processed this stock
-			if stockSet[symbolUUID] {
-				mu.Unlock()
-				return
+				// Process job with proper error handling
+				func() {
+					// Make sure to cancel at the end of this inner function
+
+					stockPublics := s.StockService.GetRandomStockWithRandomDayRange(model.Number_initial_stock_shown)
+					if len(stockPublics) == 0 {
+						fmt.Printf("Worker %d: Got empty stock list for job %d\n", workerId, i)
+						return
+					}
+
+					symbolUUID := stockPublics[0].SymbolUUID
+
+					mu.Lock()
+					if stockSet[symbolUUID] {
+						mu.Unlock()
+						return
+					}
+					stockSet[symbolUUID] = true
+					mu.Unlock()
+
+					stockInfo, err := s.StockService.GetStockInfo(symbolUUID)
+					if err != nil {
+						fmt.Printf("Error getting stock info for %s: %v\n", symbolUUID, err)
+						return
+					}
+
+					s.WriteToFile(strconv.Itoa(i), stockPublics, stockInfo)
+				}()
 			}
-			// Mark this stock as processed
-			stockSet[symbolUUID] = true
-			mu.Unlock()
-
-			// Get the stock info
-			stockInfo, err := s.StockService.GetStockInfo(symbolUUID)
-			if err != nil {
-				fmt.Printf("Error getting stock info for %s: %v\n", symbolUUID, err)
-				return
-			}
-
-			s.WriteToFile(symbolUUID, stockPublics, stockInfo)
-		}()
+		}(w)
 	}
 
-	wg.Wait()
+	// Submit jobs
+	for i := 0; i < numberOfFiles; i++ {
+		jobs <- i
+	}
+	close(jobs)
+
+	// Add timeout for the whole process
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("All jobs completed successfully")
+	case <-time.After(10 * time.Minute): // Overall timeout
+		fmt.Println("Generation process timed out after 10 minutes!")
+	}
 }
 
 func (s *GeneratorServiceImpl) DeletePreviousFiles() {
@@ -85,8 +133,8 @@ func (s *GeneratorServiceImpl) DeletePreviousFiles() {
 		return
 	}
 }
-func (s *GeneratorServiceImpl) WriteToFile(symbolUUID string, stocks []model.StockPublic, stockInfo model.StockInfo) {
-	pathFolders := fmt.Sprintf("./%s/%s.json", FOLDER_GENERATED_FILE, symbolUUID)
+func (s *GeneratorServiceImpl) WriteToFile(fileName string, stocks []model.StockPublic, stockInfo model.StockInfo) {
+	pathFolders := fmt.Sprintf("./%s/%s.json", FOLDER_GENERATED_FILE, fileName)
 
 	// Combine the data
 	data := FileData{
@@ -97,7 +145,7 @@ func (s *GeneratorServiceImpl) WriteToFile(symbolUUID string, stocks []model.Sto
 	// Marshal the data to JSON
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Printf("Error marshaling JSON for %s: %v\n", symbolUUID, err)
+		fmt.Printf("Error marshaling JSON for %s: %v\n", fileName, err)
 		return
 	}
 
@@ -109,7 +157,7 @@ func (s *GeneratorServiceImpl) WriteToFile(symbolUUID string, stocks []model.Sto
 
 	// Write the JSON data to the file
 	if err := os.WriteFile(pathFolders, jsonData, 0644); err != nil {
-		fmt.Printf("Error writing to file %s: %v\n", symbolUUID, err)
+		fmt.Printf("Error writing to file %s: %v\n", fileName, err)
 		return
 	}
 }

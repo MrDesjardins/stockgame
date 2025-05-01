@@ -78,7 +78,7 @@ generate-constants:
 
 generate-data:
 	@echo "Running generate-data..."
-	go run cmd/generate-data/main.go
+	go run cmd/generate-data/main.go $(FILES)
 
 fly-env:
 	fly ssh console -C "printenv"

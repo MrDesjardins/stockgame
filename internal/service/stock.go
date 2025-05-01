@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"math/rand/v2"
 	"stockgame/internal/dataaccess"
+	"stockgame/internal/database"
 	"stockgame/internal/logic"
 	"stockgame/internal/model"
 )
@@ -43,24 +45,35 @@ OuterLoop:
 }
 
 func (s *StockServiceImpl) GetStockPriceForTimeRange(symbol string, startDate string, endDate string) []model.Stock {
-	stocks := s.StockDataAccess.GetPricesForStockInTimeRange(symbol, startDate, endDate)
+
+	ctx, cancel := context.WithTimeout(context.Background(), database.CONTEXT_TIMEOUT)
+	defer cancel()
+	stocks := s.StockDataAccess.GetPricesForStockInTimeRange(ctx, symbol, startDate, endDate)
 	return stocks
 }
 func (s *StockServiceImpl) GetStocksBeforeEqualDate(symbol string, beforeDate string) []model.Stock {
-	stocks := s.StockDataAccess.GetStocksBeforeEqualDate(symbol, beforeDate)
+	ctx, cancel := context.WithTimeout(context.Background(), database.CONTEXT_TIMEOUT)
+	defer cancel()
+	stocks := s.StockDataAccess.GetStocksBeforeEqualDate(ctx, symbol, beforeDate)
 	return stocks
 }
 func (s *StockServiceImpl) GetStockInfo(symbolUUID string) (model.StockInfo, error) {
-	stock, err := s.StockDataAccess.GetStockInfo(symbolUUID)
+	ctx, cancel := context.WithTimeout(context.Background(), database.CONTEXT_TIMEOUT)
+	defer cancel()
+	stock, err := s.StockDataAccess.GetStockInfo(ctx, symbolUUID)
 	return stock, err
 }
 func (s *StockServiceImpl) GetStocksAfterDate(symbolUUID string, afterDate string) []model.Stock {
-	stocks := s.StockDataAccess.GetStocksAfterDate(symbolUUID, afterDate)
+	ctx, cancel := context.WithTimeout(context.Background(), database.CONTEXT_TIMEOUT)
+	defer cancel()
+	stocks := s.StockDataAccess.GetStocksAfterDate(ctx, symbolUUID, afterDate)
 	return stocks
 }
 
 func (s *StockServiceImpl) GetRandomStockFromPersistence() []model.StockPublic {
-	syms := s.StockDataAccess.GetUniqueStockSymbols()
+	ctx, cancel := context.WithTimeout(context.Background(), database.CONTEXT_TIMEOUT)
+	defer cancel()
+	syms := s.StockDataAccess.GetUniqueStockSymbols(ctx)
 
 	var symbol string
 	if s.GetRandomStockSelectorFunc != nil {
@@ -69,7 +82,7 @@ func (s *StockServiceImpl) GetRandomStockFromPersistence() []model.StockPublic {
 		symbol = s.GetRandomStock(syms) // fallback to actual implementation
 	}
 
-	stocks := s.StockDataAccess.GetPricesForStock(symbol)
+	stocks := s.StockDataAccess.GetPricesForStock(ctx, symbol)
 	return stocks
 }
 
